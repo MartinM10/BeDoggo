@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Mapa de Perros Perdidos
+{% endblock %}
+
+{% block content %}
+    <div class="container mt-4">
+        <h2>Perros Perdidos Cerca de Ti</h2>
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="distance" class="form-label">Filtrar por distancia (km):</label>
+                <input type="range" class="form-range" id="distance" min="1" max="20" step="1" value="5"/>
+                <span id="distance-value" class="badge bg-primary">5 km</span>
+            </div>
+        </div>
+        <div id="map" style="height: 500px; border: 1px solid #ddd; border-radius: 10px">
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+    <script>
+        let userLatitude, userLongitude;
+        const distanceSlider = document.getElementById("distance");
+        const distanceValue = document.getElementById("distance-value");
+
+        // Actualizar el valor del slider
+        distanceSlider.addEventListener("input", () => {
+            distanceValue.innerText = `${distanceSlider.value} km`;
+            if (userLatitude && userLongitude) {
+                updateMap();
+            }
+        });
+
+        // Obtener la ubicación del usuario
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError);
+            } else {
+                alert("Geolocalización no es soportada por este navegador.");
+            }
+        }
+
+        function showPosition(position) {
+            userLatitude = position.coords.latitude;
+            userLongitude = position.coords.longitude;
+
+            updateMap();
+        }
+
+        function updateMap() {
+            const distance = distanceSlider.value;
+
+            fetch(
+                `/lost-pets-map/?latitude=${userLatitude}&longitude=${userLongitude}&distance=${distance}`
+            )
+                .then((response) => response.json())
+                .then((data) => {
+                    initMap(data.locations);
+                })
+                .catch((err) => console.error(err));
+        }
+
+        // Inicializar el mapa
+        function initMap(locations) {
+            const map = L.map("map").setView([userLatitude, userLongitude], 13);
+
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                maxZoom: 19,
+                attribution: "© OpenStreetMap",
+            }).addTo(map);
+
+            // Agregar marcador de usuario
+            L.marker([userLatitude, userLongitude])
+                .addTo(map)
+                .bindPopup("<strong>Tu ubicación</strong>")
+                .openPopup();
+
+            // Agregar marcadores de perros perdidos
+            locations.forEach((location) => {
+                const popupContent = `
+                    <strong>${location.name}</strong><br>
+                    Raza: ${location.breed || "Desconocida"}<br>
+                    Edad: ${location.age || "Desconocida"} años<br>
+                    <strong>Dueño:</strong> ${location.owner_name}<br>
+                    Teléfono: ${location.owner_phone || "N/A"}<br>
+                    Email: ${location.owner_email || "N/A"}
+                `;
+                L.marker([location.latitude, location.longitude])
+                    .addTo(map)
+                    .bindPopup(popupContent);
+            });
+        }
+
+        function showError(error) {
+            switch (error.code) {
+                case error.PERMISSION_DENIED:
+                    alert("Permiso denegado para acceder a la ubicación.");
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    alert("La ubicación no está disponible.");
+                    break;
+                case error.TIMEOUT:
+                    alert("La solicitud para obtener la ubicación ha caducado.");
+                    break;
+                case error.UNKNOWN_ERROR:
+                    alert("Se ha producido un error desconocido.");
+                    break;
+            }
+        }
+
+        // Llamar a la función para obtener la ubicación
+        getLocation();
+    </script>
+{% endblock %}

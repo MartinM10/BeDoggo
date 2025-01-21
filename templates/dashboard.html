@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+    <div class="text-center">
+        <h2>Bienvenido al Dashboard</h2>
+        <p>Aquí puedes gestionar tus mascotas.</p>
+        <a href="{% url 'add-pet' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Agregar Mascota</a>
+        <hr>
+        <h3>Tus Mascotas</h3>
+        <!-- Aquí puedes listar las mascotas del usuario -->
+        {% if pets %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Tipo</th>
+                        <th>Edad</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pet in pets %}
+                        <tr>
+                            <td>{{ pet.name }}</td>
+                            <td>{{ pet.type }}</td>
+                            <td>{{ pet.age }}</td>
+                            <td>
+                                <a href="{% url 'edit-pet' pet.id %}" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                                <form action="{% url 'delete-pet' pet.id %}" method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash-alt"></i> Eliminar
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>No tienes mascotas registradas. ¡Agrega una mascota!</p>
+        {% endif %}
+    </div>
+{% endblock %}

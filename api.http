@@ -1,0 +1,144 @@
+###
+# Obtener un token JWT
+POST http://localhost:8000/api/token/ HTTP/1.1
+Content-Type: application/json
+
+{
+  "username": "username",
+  "password": "password"
+}
+
+###
+# Refrescar el token JWT
+POST http://localhost:8000/api/token/refresh/ HTTP/1.1
+Content-Type: application/json
+
+{
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTczNzIwMTIxMywiaWF0IjoxNzM3MTE0ODEzLCJqdGkiOiIzNDMwY2NkZTVhZmY0MmMxYjk0ZGRjZDg4NjMxYWNkYyIsInVzZXJfaWQiOjF9.ENcVyKZ1Yaf29nDYWqz2x7LxSQxbzG3Nq4iA8jKfwVY"
+}
+
+###
+# Autenticación con Google
+POST http://localhost:8000/api/auth/google/ HTTP/1.1
+Content-Type: application/json
+
+{
+  "token": "YOUR_GOOGLE_ID_TOKEN"
+}
+
+###
+# Listar todas las mascotas
+GET http://localhost:8000/api/pets/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+
+###
+# Crear una nueva mascota
+POST http://localhost:8000/api/pets/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "Fido",
+  "breed": "Labrador",
+  "age": 3,
+  "observations": "Amigable y juguetón",
+  "is_lost": false
+}
+
+###
+# Obtener detalles de una mascota específica
+GET http://localhost:8000/api/pets/1/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+
+###
+# Actualizar una mascota específica
+PUT http://localhost:8000/api/pets/1/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "Fido",
+  "breed": "Labrador",
+  "age": 4,
+  "observations": "Amigable y juguetón",
+  "is_lost": false
+}
+
+###
+# Eliminar una mascota específica
+DELETE http://localhost:8000/api/pets/1/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+
+###
+# Listar todas las ubicaciones
+GET http://localhost:8000/api/locations/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+
+###
+# Crear una nueva ubicación
+POST http://localhost:8000/api/locations/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "location": "POINT(-73.935242 40.730610)",
+  "pet": 1
+}
+
+###
+# Obtener detalles de una ubicación específica
+GET http://localhost:8000/api/locations/1/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+
+###
+# Actualizar una ubicación específica
+PUT http://localhost:8000/api/locations/1/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "location": "POINT(-73.935242 40.730610)",
+  "pet": 1
+}
+
+###
+# Eliminar una ubicación específica
+DELETE http://localhost:8000/api/locations/1/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+
+###
+# Listar todos los accesos a mascotas
+GET http://localhost:8000/api/pet-access/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+
+###
+# Crear un nuevo acceso a una mascota
+POST http://localhost:8000/api/pet-access/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "user": 1,
+  "pet": 1
+}
+
+###
+# Obtener detalles de un acceso específico
+GET http://localhost:8000/api/pet-access/1/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+
+###
+# Actualizar un acceso específico
+PUT http://localhost:8000/api/pet-access/1/ HTTP/1.1
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "user": 1,
+  "pet": 1
+}
+
+###
+# Eliminar un acceso específico
+DELETE http://localhost:8000/api/pet-access/1/ HTTP/1.1
+Authorization: Bearer {{access_token}}
