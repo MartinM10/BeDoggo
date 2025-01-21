@@ -4,12 +4,13 @@ from django.contrib.gis.db import models
 
 
 class User(AbstractUser):
+    email = models.EmailField(unique=True)
     address = models.TextField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     on_boarding = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = []  # Dejar vacío si no deseas requerir otros campos además del email y password
 
     def __str__(self):
         return f"{self.username}"
