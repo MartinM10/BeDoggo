@@ -1,27 +1,64 @@
 body {
-  background-color: #f8f9fa; /* Color de fondo suave */
+    background-color: #f8f9fa; /* Color de fondo suave */
 }
 
 .navbar {
-  background-color: #007bff; /* Color de la barra de navegación */
+    background-color: #007bff; /* Color de la barra de navegación */
 }
 
 .navbar a {
-  color: white !important; /* Color de los enlaces en la barra de navegación */
+    color: white !important; /* Color de los enlaces en la barra de navegación */
 }
 
 h2 {
-  color: #343a40; /* Color del título */
+    color: #343a40; /* Color del título */
 }
 
 .btn {
-  border-radius: 25px; /* Bordes redondeados para los botones */
+    border-radius: 25px; /* Bordes redondeados para los botones */
 }
 
 .border {
-  border: 1px solid #007bff; /* Borde azul para formularios */
+    border: 1px solid #007bff; /* Borde azul para formularios */
 }
 
 .shadow {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra para formularios */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra para formularios */
+}
+
+/* Estilos opcionales para mejorar la apariencia */
+.form-range {
+    width: 100%;
+    margin: 10px 0;
+}
+
+
+/* Estilos para la barra de filtro de distancia */
+.range-container {
+    position: relative;
+    width: 100%;
+}
+
+.range-line {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px; /* Grosor de la línea */
+    background-color: black; /* Color de la línea */
+    z-index: 5; /* Asegúrate de que esté detrás del slider */
+}
+
+.form-range {
+    position: relative;
+    z-index: 2; /* Asegúrate de que el slider esté por encima de la línea */
+    margin: 10px 0;
+}
+
+/* Estilos para el popup */
+.popup-content {
+    background-color: white; /* Fondo blanco */
+    border-radius: 5px; /* Bordes redondeados */
+    padding: 10px; /* Espaciado interno */
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2); /* Sombra */
 }

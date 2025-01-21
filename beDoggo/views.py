@@ -2,7 +2,7 @@ from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
-from .models import Pet
+from .models import Pet, Location
 from .serializers import UserSerializer, RegisterSerializer
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate
@@ -12,6 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D
 from django.contrib.gis.db.models.functions import Distance
+from django.http import JsonResponse
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
@@ -119,47 +120,38 @@ def index_view(request):
         return render(request, 'index.html')
 
 
-from django.http import JsonResponse
+@login_required
+def lost_pets_map_view(request):
+    return render(request, "pets/lost_pets_map.html")
 
 
 @login_required
-def lost_pets_map_view(request):
-    print((Pet.objects.all()))
-    user_lat = request.GET.get('latitude')
-    user_lng = request.GET.get('longitude')
-    distance_km = request.GET.get('distance', 5)  # Distancia predeterminada: 5 km
-    print(request.GET)
-    if user_lat and user_lng:
-        user_location = Point(float(user_lng), float(user_lat), srid=4326)
+def lost_pets_data_view(request):
+    latitude = float(request.GET.get('latitude', 0))
+    longitude = float(request.GET.get('longitude', 0))
+    distance = float(request.GET.get('distance', 5))  # Distancia en km
 
-        # Obtener los perros perdidos en el radio especificado
-        lost_pets = (
-            Pet.objects.filter(is_lost=True)
-            .annotate(distance=Distance('locations__location', user_location))  # Obtener distancia
-            .filter(locations__location__distance_lte=(user_location, D(km=distance_km)))  # Filtrar por distancia
-        )
+    # Coordenadas del usuario
+    user_location = Point(longitude, latitude, srid=4326)
 
-        locations = [
-            {
-                'latitude': loc.location.y,
-                'longitude': loc.location.x,
-                'name': pet.name,
-                'breed': pet.breed,
-                'age': pet.age,
-                'owner_name': pet.owner.username,
-                'owner_phone': pet.owner.phone,
-                'owner_email': pet.owner.email,
-            }
-            for pet in lost_pets
-            for loc in pet.locations.all()
-        ]
-        print(locations)
-        print(lost_pets)
+    # Filtrar mascotas perdidas dentro de la distancia especificada
+    lost_pets = Pet.objects.filter(
+        is_lost=True,
+        locations__location__distance_lte=(user_location, D(km=distance))
+    ).annotate(distance=Distance('locations__location', user_location)).select_related('owner')
 
-        return JsonResponse({'locations': locations})
-    else:
-        return JsonResponse({'locations': []})
+    locations = [
+        {
+            'name': pet.name,
+            'breed': pet.breed,
+            'age': pet.age,
+            'latitude': pet.locations.first().location.y,
+            'longitude': pet.locations.first().location.x,
+            'owner_name': f"{pet.owner.first_name} {pet.owner.last_name}",
+            'owner_phone': pet.owner.phone if pet.owner.phone else "N/A",
+            'owner_email': pet.owner.email if pet.owner.email else "N/A",
+        }
+        for pet in lost_pets
+    ]
 
-
-def mapa_perros_perdidos(request):
-    return render(request, "pets/mapa_perros_perdidos.html")
+    return JsonResponse({'locations': locations})

@@ -61,8 +61,18 @@ class Command(BaseCommand):
                 "owner": user2,
             }
         )
+        pet3, created_pet3 = Pet.objects.get_or_create(
+            name="Rex",
+            defaults={
+                "breed": "Pastor Alemán",
+                "age": 4,
+                "observations": "Perro muy leal y protector.",
+                "is_lost": True,
+                "owner": user1,
+            }
+        )
 
-        if created_pet1 and created_pet2:
+        if created_pet1 and created_pet2 and created_pet3:
             self.stdout.write(self.style.SUCCESS("Mascotas creadas con éxito."))
         else:
             self.stdout.write(self.style.WARNING("Algunas mascotas ya existían."))
@@ -75,10 +85,14 @@ class Command(BaseCommand):
             location=Point(-4.433629, 36.709964), pet=pet2
         )
         location3, created_loc3 = Location.objects.get_or_create(
+            location=Point(-3.5881, 37.1773),  # Coordenadas de Granada, España
+            pet=pet3
+        )
+        location4, created_loc4 = Location.objects.get_or_create(
             location=Point(-4.441132, 36.709292), pet=pet1
         )
 
-        if created_loc1 or created_loc2 or created_loc3:
+        if created_loc1 or created_loc2 or created_loc3 or created_loc4:
             self.stdout.write(self.style.SUCCESS("Ubicaciones creadas con éxito."))
         else:
             self.stdout.write(self.style.WARNING("Algunas ubicaciones ya existían."))
