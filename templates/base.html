@@ -17,11 +17,6 @@
             <ul class="navbar-nav ms-auto">
                 {% if user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'lost-pets-map' %}"><i class="fas fa-dog"></i>
-                            Ver mascotas perdidas
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="{% url 'dashboard' %}"><i class="fas fa-dog"></i> Mis mascotas</a>
                     </li>
                     <li class="nav-item">
@@ -36,6 +31,11 @@
                         </form>
                     </li>
                 {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'lost-pets-map' %}"><i class="fas fa-dog"></i>
+                            Ver mascotas perdidas
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'login' %}"><i class="fas fa-sign-in-alt"></i> Login</a>
                     </li>

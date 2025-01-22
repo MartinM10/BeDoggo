@@ -142,3 +142,17 @@ Content-Type: application/json
 # Eliminar un acceso específico
 DELETE http://localhost:8000/api/pet-access/1/ HTTP/1.1
 Authorization: Bearer {{access_token}}
+
+###
+# Buscar mascotas perdidas cerca de una ubicación
+#GET http://localhost:8000/api/lost-pets/ HTTP/1.1
+GET http://localhost:8000/api/lost-pets/?latitude=36.71040344238281&longitude=-4.440666198730469&distance=2 HTTP/1.1
+# Authorization: Bearer {{access_token}}
+
+# Parámetros de consulta:
+# latitude: Latitud de la ubicación del usuario
+# longitude: Longitud de la ubicación del usuario
+# distance: Distancia en km para buscar mascotas perdidas
+
+# Ejemplo:
+# http://localhost:8000/api/lost-pets/?latitude=36.7213&longitude=-4.4214&distance=10

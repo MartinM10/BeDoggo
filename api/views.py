@@ -4,11 +4,16 @@ from google.oauth2 import id_token
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from beDoggo.models import User, Pet, Location, PetAccess
 from .permissions import IsOwnerOrAdmin
-from .serializers import UserSerializer, PetSerializer, LocationSerializer, PetAccessSerializer
+from .serializers import UserSerializer, PetSerializer, LocationSerializer, PetAccessSerializer, LostPetSerializer, \
+    GoogleLoginSerializer
+from django.contrib.gis.geos import Point
+from django.contrib.gis.measure import D  # Distancia
+from django.contrib.gis.db.models.functions import Distance
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 
 def api_home(request):
@@ -19,6 +24,7 @@ class GoogleLoginView(APIView):
     """
     Endpoint para manejar la autenticación con Google.
     """
+    serializer_class = GoogleLoginSerializer
 
     def post(self, request):
         # El cliente móvil enviará el token de Google
@@ -29,22 +35,22 @@ class GoogleLoginView(APIView):
 
         try:
             # Verifica el token con los servidores de Google
+            # para produccion descomentar la siguiente linea
+            # idinfo = id_token.verify_oauth2_token(token, requests.Request(), audience=settings.GOOGLE_CLIENT_ID)
             idinfo = id_token.verify_oauth2_token(token, requests.Request())
-
-            """ Para produccion deberia ponerse esto
-            idinfo = id_token.verify_oauth2_token(token, requests.Request(), audience="YOUR_CLIENT_ID")
-            """
 
             # Extraer información del usuario
             email = idinfo.get('email')
-            first_name = idinfo.get('fullName', '')
+            first_name = idinfo.get('given_name', '')  # Usar 'given_name' para el primer nombre
+            last_name = idinfo.get('family_name', '')  # Usar 'family_name' para el apellido
 
             # Verifica si el usuario ya existe o crea uno nuevo
             user, created = User.objects.get_or_create(
                 email=email,
                 defaults={
                     "first_name": first_name,
-                    "username": email.split('@')[0],
+                    "last_name": last_name,
+                    "username": email.split('@')[0],  # El nombre de usuario se genera del email
                 },
             )
 
@@ -74,7 +80,8 @@ class PetListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Pet.objects.filter(owner=self.request.user)  # Solo devuelve las mascotas del usuario autenticado
+        return Pet.objects.filter(owner=self.request.user).order_by('id')
+        # Solo devuelve las mascotas del usuario autenticado
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -102,7 +109,7 @@ class LocationListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         # Solo devuelve ubicaciones de las mascotas del usuario
-        return Location.objects.filter(pet__owner=self.request.user)
+        return Location.objects.filter(pet__owner=self.request.user).order_by('id')
 
 
 class LocationDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -117,7 +124,7 @@ class PetAccessListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return PetAccess.objects.filter(user=self.request.user)
+        return PetAccess.objects.filter(user=self.request.user).order_by('id')
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -140,3 +147,53 @@ class UserListView(generics.ListAPIView):
     queryset = User.objects.all().order_by('id')
     serializer_class = UserSerializer
     permission_classes = [IsAdminUser]
+
+
+@extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="latitude",
+            description="Latitud del usuario",
+            required=True,
+            type=float,
+            default=36.71040344238281
+        ),
+        OpenApiParameter(
+            name="longitude",
+            description="Longitud del usuario",
+            required=True,
+            type=float,
+            default=-4.440666198730469
+        ),
+        OpenApiParameter(
+            name="distance",
+            description="Distancia en kilómetros para buscar mascotas (por defecto: 2 km)",
+            required=False,
+            type=float,
+            default=2
+        ),
+    ],
+    responses={200: LostPetSerializer(many=True)}
+)
+class LostPetsNearbyView(APIView):
+    permission_classes = [AllowAny]  # No Requiere autenticación
+
+    def get(self, request, *args, **kwargs):
+        latitude = float(request.query_params.get('latitude'))
+        longitude = float(request.query_params.get('longitude'))
+        distance = float(request.query_params.get('distance'))
+
+        # Crear el punto de ubicación del usuario
+        user_location = Point(longitude, latitude, srid=4326)
+
+        # Filtrar mascotas perdidas dentro de la distancia especificada
+        lost_pets = Pet.objects.filter(
+            is_lost=True,
+            locations__location__distance_lte=(user_location, D(km=distance))
+        ).annotate(
+            distance=Distance('locations__location', user_location)
+        ).select_related('owner').order_by('distance')  # Ordenar por distancia
+
+        # Serializar los resultados
+        serializer = LostPetSerializer(lost_pets, many=True)
+        return Response(serializer.data)

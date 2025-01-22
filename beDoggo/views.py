@@ -120,12 +120,10 @@ def index_view(request):
         return render(request, 'index.html')
 
 
-@login_required
 def lost_pets_map_view(request):
     return render(request, "pets/lost_pets_map.html")
 
 
-@login_required
 def lost_pets_data_view(request):
     latitude = float(request.GET.get('latitude', 0))
     longitude = float(request.GET.get('longitude', 0))

@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'rest_framework',
     'rest_framework_simplejwt',
-    'drf_yasg',
+    'drf_spectacular',
     'beDoggo.apps.BedoggoConfig',
     'api.apps.ApiConfig',
 ]
@@ -58,10 +58,29 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-        'rest_framework.permissions.IsAdminUser',
+        # 'rest_framework.permissions.IsAdminUser',
     ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,  # Número de elementos por página
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API de Mascotas Perdidas',
+    'DESCRIPTION': 'Documentación de la API para buscar mascotas perdidas cerca.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SECURITY': [
+        {'Bearer': []},
+    ],
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': 'Añade tu token JWT en el formato: Bearer <tu_token>',
+        },
+    },
 }
 
 # Configuración de Simple JWT (con Simple JWT los tokens no se almacenan en la bbdd)
@@ -78,18 +97,6 @@ SIMPLE_JWT = {
 se debe incluir lo siguiente para acceder a recursos que requieren IsAuthenticated
 Authorization: Bearer <access_token>
 """
-SWAGGER_SETTINGS = {
-    'USE_SESSION_AUTH': False,
-    'SECURITY_DEFINITIONS': {
-        'Bearer': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header',
-            'description': 'Añade tu token JWT en el formato: Bearer <tu_token>',
-        },
-    },
-    'DEFAULT_API_URL': 'http://localhost:8000/api/',  # URL base de la API
-}
 
 # FORCE_SCRIPT_NAME = '/'
 # DEFAULT_API_URL = '/'
