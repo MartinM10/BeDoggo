@@ -45,8 +45,9 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'rest_framework',
     'rest_framework_simplejwt',
+    'drf_yasg',
     'beDoggo.apps.BedoggoConfig',
-    'api',
+    'api.apps.ApiConfig',
 ]
 
 # Configuración de Django REST Framework
@@ -57,7 +58,10 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.IsAdminUser',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,  # Número de elementos por página
 }
 
 # Configuración de Simple JWT (con Simple JWT los tokens no se almacenan en la bbdd)
@@ -74,6 +78,21 @@ SIMPLE_JWT = {
 se debe incluir lo siguiente para acceder a recursos que requieren IsAuthenticated
 Authorization: Bearer <access_token>
 """
+SWAGGER_SETTINGS = {
+    'USE_SESSION_AUTH': False,
+    'SECURITY_DEFINITIONS': {
+        'Bearer': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header',
+            'description': 'Añade tu token JWT en el formato: Bearer <tu_token>',
+        },
+    },
+    'DEFAULT_API_URL': 'http://localhost:8000/api/',  # URL base de la API
+}
+
+# FORCE_SCRIPT_NAME = '/'
+# DEFAULT_API_URL = '/'
 
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/accounts/profile/'

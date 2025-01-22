@@ -1,12 +1,18 @@
+from django.shortcuts import redirect
 from google.auth.transport import requests
 from google.oauth2 import id_token
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework_simplejwt.tokens import RefreshToken
 from beDoggo.models import User, Pet, Location, PetAccess
+from .permissions import IsOwnerOrAdmin
 from .serializers import UserSerializer, PetSerializer, LocationSerializer, PetAccessSerializer
+
+
+def api_home(request):
+    return redirect('/api/docs/')  # Redirige a la documentación Swagger
 
 
 class GoogleLoginView(APIView):
@@ -64,41 +70,73 @@ class GoogleLoginView(APIView):
 
 # Vistas para el modelo Pet
 class PetListCreateView(generics.ListCreateAPIView):
-    queryset = Pet.objects.all()
     serializer_class = PetSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Pet.objects.filter(owner=self.request.user)  # Solo devuelve las mascotas del usuario autenticado
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
 
 class PetDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Pet.objects.all()
     serializer_class = PetSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+
+    def get_queryset(self):
+        return Pet.objects.all().order_by('id')
+
+
+# Vista para que un administrador obtenga todas las mascotas
+class AdminPetListView(generics.ListAPIView):
+    queryset = Pet.objects.all().order_by('id')
+    serializer_class = PetSerializer
+    permission_classes = [IsAdminUser]  # Solo accesible para administradores
 
 
 # Vistas para el modelo Location
 class LocationListCreateView(generics.ListCreateAPIView):
-    queryset = Location.objects.all()
     serializer_class = LocationSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        # Solo devuelve ubicaciones de las mascotas del usuario
+        return Location.objects.filter(pet__owner=self.request.user)
+
 
 class LocationDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Location.objects.all()
+    queryset = Location.objects.all().order_by('id')
     serializer_class = LocationSerializer
     permission_classes = [IsAuthenticated]
 
 
 # Vistas para el modelo PetAccess
 class PetAccessListCreateView(generics.ListCreateAPIView):
-    queryset = PetAccess.objects.all()
     serializer_class = PetAccessSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return PetAccess.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 class PetAccessDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = PetAccess.objects.all()
+    queryset = PetAccess.objects.all().order_by('id')
     serializer_class = PetAccessSerializer
     permission_classes = [IsAuthenticated]
+
+
+# Vista para que un administrador obtenga todos los accesos a mascotas
+class AdminPetAccessListView(generics.ListAPIView):
+    queryset = PetAccess.objects.all().order_by('id')
+    serializer_class = PetAccessSerializer
+    permission_classes = [IsAdminUser]
+
+
+class UserListView(generics.ListAPIView):
+    queryset = User.objects.all().order_by('id')
+    serializer_class = UserSerializer
+    permission_classes = [IsAdminUser]
