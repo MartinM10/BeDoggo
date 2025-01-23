@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>{% block title %}My App{% endblock %}</title>
+    <title>{% block title %}BeDoggo{% endblock %}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
     <link rel="stylesheet" href="{% static 'css/styles.css' %}"/>
@@ -12,9 +12,14 @@
 <body>
 <nav class="navbar navbar-expand-lg navbar-light">
     <div class="container">
-        <a class="navbar-brand" href="/">My App</a>
+        <a class="navbar-brand" href="/">BeDoggo</a>
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'lost-pets-map' %}"><i class="fas fa-dog"></i>
+                        Ver mascotas perdidas
+                    </a>
+                </li>
                 {% if user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'dashboard' %}"><i class="fas fa-dog"></i> Mis mascotas</a>
@@ -31,11 +36,7 @@
                         </form>
                     </li>
                 {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'lost-pets-map' %}"><i class="fas fa-dog"></i>
-                            Ver mascotas perdidas
-                        </a>
-                    </li>
+
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'login' %}"><i class="fas fa-sign-in-alt"></i> Login</a>
                     </li>
