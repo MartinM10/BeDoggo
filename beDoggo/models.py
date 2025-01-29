@@ -105,7 +105,7 @@ class Pet(models.Model):
 
     # Relaciones
     owner = models.ForeignKey(User, related_name='owned_pets', on_delete=models.CASCADE)
-    device = models.OneToOneField(GPSDevice, on_delete=models.SET_NULL, blank=True, null=True)
+    gps_device = models.OneToOneField(GPSDevice, on_delete=models.SET_NULL, blank=True, null=True)
     veterinarian = models.ForeignKey(Veterinarian, on_delete=models.SET_NULL, blank=True, null=True,
                                      related_name='pets')
     shared_with = models.ManyToManyField(User, related_name='shared_pets', blank=True)
@@ -146,7 +146,7 @@ class Location(models.Model):
     location = models.PointField()  # Coordenadas
     timestamp = models.DateTimeField(auto_now_add=True)
 
-    gps_device = models.ForeignKey(GPSDevice, on_delete=models.CASCADE, related_name='locations')
+    gps_device = models.ForeignKey(GPSDevice, on_delete=models.CASCADE, related_name='locations', blank=True, null=True)
 
     created_at = models.DateTimeField(default=now)
     updated_at = models.DateTimeField(auto_now=True)
