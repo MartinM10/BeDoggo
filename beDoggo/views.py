@@ -241,18 +241,12 @@ def pet_detail(request, pk):
 
 
 def register_veterinarian_view(request):
-    print('entra')
     if request.method == 'POST':
-        print('entra2')
-        print(request.POST)
         form = VeterinarianRegistrationForm(request.POST)
         if form.is_valid():
-            print('entra3')
             user = form.save()  # Guardar el usuario
-            print('entra4')
             # Autenticar al usuario recién creado
             user = authenticate(request, email=form.cleaned_data['email'], password=form.cleaned_data['password1'])
-            print(user)
             if user is not None:
                 login(request, user)  # Inicia sesión
                 return redirect('dashboard')  # Redirige al dashboard
