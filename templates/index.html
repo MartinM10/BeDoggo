@@ -9,10 +9,15 @@
             Una aplicación para gestionar tu información de manera sencilla y eficiente.
         </p>
         <div class="mt-4">
-            <a href="{% url 'login' %}" class="btn btn-primary btn-lg"
-            ><i class="fas fa-sign-in-alt"></i> Iniciar Sesión</a>
-            <a href="{% url 'register' %}" class="btn btn-success btn-lg"
-            ><i class="fas fa-user-plus"></i> Registrarse</a>
+            <a href="{% url 'login' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+            </a>
+            <a href="{% url 'register' %}" class="btn btn-success btn-lg">
+                <i class="fas fa-user-plus"></i> Registrarse
+            </a>
+            <a href="{% url 'register-veterinarian' %}" class="btn btn-success btn-lg">
+                <i class="fas fa-user-doctor"></i> Registrarse como veterinario
+            </a>
         </div>
     </div>
 {% endblock %}

@@ -4,7 +4,7 @@ services:
   web:
     build: .
     container_name: django_app
-    command: gunicorn proyecto.wsgi:application --bind 0.0.0.0:8000
+    command: gunicorn BeDoggo.wsgi:application --bind 0.0.0.0:8000
     volumes:
       - .:/app
     ports:
@@ -13,6 +13,8 @@ services:
       - .env
     depends_on:
       - db
+    networks:
+      - app_network
 
   db:
     image: postgis/postgis:14-3.1
@@ -20,11 +22,16 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: django_user
-      POSTGRES_PASSWORD: django_password
-      POSTGRES_DB: django_db
+      POSTGRES_USER: doggo
+      POSTGRES_PASSWORD: doggo
+      POSTGRES_DB: bedoggodb
     ports:
       - "5432:5432"
+    networks:
+      - app_network
 
 volumes:
   postgres_data:
+
+networks:
+  app_network:

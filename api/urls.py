@@ -1,31 +1,51 @@
-from django.urls import path, include
+from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import PetListCreateView, PetDetailView, LocationListCreateView, LocationDetailView, \
-    PetAccessListCreateView, PetAccessDetailView, GoogleLoginView, UserListView, AdminPetListView, \
-    AdminPetAccessListView, api_home, LostPetsNearbyView
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
+from .views import (
+    api_home, GoogleLoginView, RegisterUserView,
+    PetListCreateView, PetDetailView, PetAccessCodeView, AccessCodeValidationView,
+    LostPetsNearbyView, LocationListCreateView, LocationDetailView,
+    VeterinarianListCreateView, VeterinarianDetailView,
+    MedicalRecordListCreateView, MedicalRecordDetailView, PetSearchView, SharedPetsView, OnboardingView,
+    AssociateGPSDeviceView
+)
 
 urlpatterns = [
-    # Rutas para la documentación
+    # Documentación
     path('docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
 
-    path('admin/', include([
-        path('pets/', AdminPetListView.as_view(), name='admin-pet-list'),
-        path('pet-access/', AdminPetAccessListView.as_view(), name='admin-pet-access-list'),
-    ])),
+    # Home
+    path('', api_home, name='api-home'),
 
-    path('', api_home, name='api-home'),  # Redirige a la documentación de Swagger
-    path('users/', UserListView.as_view(), name='user-list'),
+    # Usuarios y autenticación
+    path('auth/google/', GoogleLoginView.as_view(), name='google-login'),
+    path('auth/register/', RegisterUserView.as_view(), name='register'),
+    path('onboarding/', OnboardingView.as_view(), name='onboarding'),
+
+    # Mascotas
     path('pets/', PetListCreateView.as_view(), name='pet-list-create'),
-    path('pets/<int:pk>/', PetDetailView.as_view(), name='pet-detail'),
+    path('pets/<uuid:pet_id>/', PetDetailView.as_view(), name='pet-detail'),
+    path('pets/<uuid:pet_id>/access-code/', PetAccessCodeView.as_view(), name='pet-access-code'),
+    path('pets/access-code/validate/', AccessCodeValidationView.as_view(), name='access-code-validate'),
+    path('pets/search/', PetSearchView.as_view(), name='pet-search'),
+    path('pets/shared/', SharedPetsView.as_view(), name='shared-pets'),
+    path('pets/<uuid:pet_id>/associate-device/', AssociateGPSDeviceView.as_view(), name='associate-device'),
+
+    # Ubicaciones
     path('locations/', LocationListCreateView.as_view(), name='location-list-create'),
     path('locations/<int:pk>/', LocationDetailView.as_view(), name='location-detail'),
-    path('pet-access/', PetAccessListCreateView.as_view(), name='pet-access-list-create'),
-    path('pet-access/<int:pk>/', PetAccessDetailView.as_view(), name='pet-access-detail'),
+    path('locations/lost-pets/', LostPetsNearbyView.as_view(), name='lost-pets'),
+
+    # Veterinarios
+    path('veterinarians/', VeterinarianListCreateView.as_view(), name='veterinarian-list-create'),
+    path('veterinarians/<int:pk>/', VeterinarianDetailView.as_view(), name='veterinarian-detail'),
+
+    # Historial Médico
+    path('medical-records/<uuid:pet_id>/', MedicalRecordListCreateView.as_view(), name='medical-record-list-create'),
+    path('medical-records/<uuid:record_id>/', MedicalRecordDetailView.as_view(), name='medical-record-detail'),
+
+    # JWT Tokens
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('auth/google/', GoogleLoginView.as_view(), name='google-login'),
-
-    path('lost-pets/', LostPetsNearbyView.as_view(), name='lost-pets-nearby'),
 ]

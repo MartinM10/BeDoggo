@@ -3,6 +3,9 @@
 # Salir si algo falla
 set -e
 
+# Esperar a que la base de datos esté disponible
+/app/wait-for-db.sh
+
 # Aplicar las migraciones pendientes
 echo "Aplicando migraciones..."
 python manage.py migrate --noinput
@@ -11,8 +14,6 @@ python manage.py migrate --noinput
 echo "Recopilando archivos estáticos..."
 python manage.py collectstatic --noinput
 
-# Ejecutar el servidor
+# Iniciar el servidor Gunicorn
 echo "Iniciando servidor Django..."
-gunicorn proyecto.wsgi:application --bind 0.0.0.0:8000
-
-exec "$@"
+exec gunicorn BeDoggo.wsgi:application --bind 0.0.0.0:8000

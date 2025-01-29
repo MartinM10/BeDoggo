@@ -2,17 +2,53 @@ from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
-from .models import Pet, Location
+from .models import Pet, Location, User
 from .serializers import UserSerializer, RegisterSerializer
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate
 from django.contrib.auth.forms import AuthenticationForm
-from .forms import CustomUserCreationForm, PetForm
-from django.contrib.auth.decorators import login_required
+from .forms import CustomUserCreationForm, PetForm, MedicalRecordForm, ProfileForm, VeterinarianRegistrationForm
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D
 from django.contrib.gis.db.models.functions import Distance
 from django.http import JsonResponse
+from django.db.models import Q
+
+
+def is_veterinarian(user):
+    return user.is_authenticated and user.is_veterinarian
+
+
+@user_passes_test(is_veterinarian)
+@login_required
+def search_pet_view(request):
+    pets = None
+    query = request.GET.get('query', '')
+
+    if query:
+        pets = Pet.objects.filter(
+            Q(owner__email__icontains=query) | Q(chip_number__icontains=query)
+        ).select_related('owner')
+
+    return render(request, 'veterinarians/search_pet.html', {'pets': pets, 'query': query})
+
+
+@login_required
+@user_passes_test(is_veterinarian)
+def add_medical_record_view(request, pet_id):
+    pet = get_object_or_404(Pet, id=pet_id)
+    if request.method == "POST":
+        form = MedicalRecordForm(request.POST, request.FILES)
+        if form.is_valid():
+            medical_record = form.save(commit=False)
+            medical_record.pet = pet
+            medical_record.veterinarian = request.user.veterinarian_profile
+            medical_record.save()
+            return redirect('pet-detail', pk=pet.id)
+    else:
+        form = MedicalRecordForm()
+    return render(request, 'veterinarians/add_medical_record.html', {'form': form, 'pet': pet})
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
@@ -68,7 +104,16 @@ def login_view(request):
 
 @login_required
 def profile_view(request):
-    return render(request, 'accounts/profile.html')
+    profile = get_object_or_404(User, id=request.user.id)
+    print(profile)
+    if request.method == 'POST':
+        form = ProfileForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            form.save()
+            return redirect('user-profile')
+    else:
+        form = ProfileForm(instance=profile)
+    return render(request, 'accounts/profile.html', {'form': form, 'profile': profile})
 
 
 @login_required
@@ -85,14 +130,21 @@ def add_pet_view(request):
 
 @login_required
 def edit_pet_view(request, pet_id):
-    pet = get_object_or_404(Pet, id=pet_id, owner=request.user)
+    pet = get_object_or_404(Pet, id=pet_id)
+    # pet = get_object_or_404(Pet, id=pet_id, owner=request.user)
+
+    # Asegurarse de que el usuario sea el dueño de la mascota o un veterinario
+    if request.user != pet.owner and not request.user.is_veterinarian:
+        return redirect('dashboard')  # Redirige si no tiene permiso
+
     if request.method == 'POST':
-        form = PetForm(request.POST, instance=pet)
+        form = PetForm(request.POST, request.FILES, instance=pet)
         if form.is_valid():
             form.save()
-            return redirect('dashboard')
+            return redirect('dashboard')  # O redirige a otra página, como el perfil de la mascota
     else:
         form = PetForm(instance=pet)
+
     return render(request, 'pets/edit_pet.html', {'form': form, 'pet': pet})
 
 
@@ -105,10 +157,23 @@ def delete_pet_view(request, pet_id):
     return redirect('dashboard')
 
 
+"""
 @login_required
 def dashboard_view(request):
     pets = Pet.objects.filter(owner=request.user)
     return render(request, 'dashboard.html', {'user': request.user, 'pets': pets})
+"""
+
+
+@login_required
+def dashboard_view(request):
+    pets = Pet.objects.filter(owner=request.user)
+    is_veterinarian = request.user.is_veterinarian  # Verificar si el usuario es veterinario
+    return render(request, 'dashboard.html', {
+        'user': request.user,
+        'pets': pets,
+        'is_veterinarian': is_veterinarian  # Pasar esta información al template
+    })
 
 
 def index_view(request):
@@ -153,3 +218,44 @@ def lost_pets_data_view(request):
     ]
 
     return JsonResponse({'locations': locations})
+
+
+"""
+def add_medical_record(request):
+    if request.method == "POST":
+        form = MedicalRecordForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect('pet_detail', pk=form.cleaned_data['pet'].id)  # Cambia 'pet_detail' por tu vista
+    else:
+        form = MedicalRecordForm()
+
+    return render(request, 'veterinarians/add_medical_record.html', {'form': form})
+"""
+
+
+def pet_detail(request, pk):
+    pet = get_object_or_404(Pet, pk=pk)
+    medical_records = pet.medical_records.all()  # Historial médico de la mascota
+    return render(request, 'pets/pet_detail.html', {'pet': pet, 'medical_records': medical_records})
+
+
+def register_veterinarian_view(request):
+    print('entra')
+    if request.method == 'POST':
+        print('entra2')
+        print(request.POST)
+        form = VeterinarianRegistrationForm(request.POST)
+        if form.is_valid():
+            print('entra3')
+            user = form.save()  # Guardar el usuario
+            print('entra4')
+            # Autenticar al usuario recién creado
+            user = authenticate(request, email=form.cleaned_data['email'], password=form.cleaned_data['password1'])
+            print(user)
+            if user is not None:
+                login(request, user)  # Inicia sesión
+                return redirect('dashboard')  # Redirige al dashboard
+    else:
+        form = VeterinarianRegistrationForm()
+    return render(request, 'veterinarians/register_veterinarian.html', {'form': form})

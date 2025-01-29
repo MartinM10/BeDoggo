@@ -5,42 +5,76 @@
 {% block content %}
     <div class="text-center">
         <h2>Bienvenido al Dashboard</h2>
-        <p>Aquí puedes gestionar tus mascotas.</p>
-        <a href="{% url 'add-pet' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Agregar Mascota</a>
-        <hr>
-        <h3>Tus Mascotas</h3>
-        <!-- Aquí puedes listar las mascotas del usuario -->
+
+        <!-- Contenido específico para veterinarios -->
+        {% if is_veterinarian %}
+            <p>Bienvenido, veterinario. Aquí puedes gestionar tus consultas y mascotas asociadas.</p>
+            <a href="{% url 'search-pet' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Buscar Mascota</a>
+
+            <hr>
+            <h3>Mascotas Asociadas</h3>
+        {% else %}
+            <!-- Contenido para usuarios normales -->
+            <p>Aquí puedes gestionar tus mascotas.</p>
+            <a href="{% url 'add-pet' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Agregar Mascota</a>
+            <hr>
+            <h3>Tus Mascotas</h3>
+        {% endif %}
+
+        <!-- Carrusel de mascotas -->
         {% if pets %}
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Tipo</th>
-                        <th>Edad</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div id="petCarousel" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner">
                     {% for pet in pets %}
-                        <tr>
-                            <td>{{ pet.name }}</td>
-                            <td>{{ pet.type }}</td>
-                            <td>{{ pet.age }}</td>
-                            <td>
-                                <a href="{% url 'edit-pet' pet.id %}" class="btn btn-sm btn-warning">
-                                    <i class="fas fa-edit"></i> Editar
-                                </a>
-                                <form action="{% url 'delete-pet' pet.id %}" method="post" style="display:inline;">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-sm btn-danger">
-                                        <i class="fas fa-trash-alt"></i> Eliminar
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
+                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                            <div class="card mx-auto" style="max-width: 400px;">
+                                <!-- Imagen de la mascota -->
+                                {% if pet.photo %}
+                                    <img src="{{ pet.photo.url }}" class="card-img-top" alt="{{ pet.name }}"
+                                         style="height: 300px; object-fit: cover;">
+                                {% else %}
+                                    <img src="/static/images/default_pet_image.jpg" class="card-img-top"
+                                         alt="Imagen por defecto" style="height: 300px; object-fit: cover;">
+                                {% endif %}
+
+                                <!-- Información de la mascota -->
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ pet.name }}</h5>
+                                    <p class="card-text">
+                                        <strong>Raza:</strong> {{ pet.breed|default:"N/A" }}<br>
+                                        <strong>Edad:</strong> {{ pet.age }} años<br>
+                                        <strong>Peso:</strong> {{ pet.weight|default:"N/A" }} kg<br>
+                                        <strong>Chip:</strong> {{ pet.chip_number|default:"N/A" }}
+                                    </p>
+                                </div>
+
+                                <!-- Botones de acciones -->
+                                <div class="card-footer">
+                                    <a href="{% url 'edit-pet' pet.id %}" class="btn btn-warning btn-sm">
+                                        <i class="fas fa-edit"></i> Editar
+                                    </a>
+                                    <form action="{% url 'delete-pet' pet.id %}" method="post" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            <i class="fas fa-trash-alt"></i> Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+
+                <!-- Flechas de navegación -->
+                <button class="carousel-control-prev" type="button" data-bs-target="#petCarousel" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Anterior</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#petCarousel" data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Siguiente</span>
+                </button>
+            </div>
         {% else %}
             <p>No tienes mascotas registradas. ¡Agrega una mascota!</p>
         {% endif %}

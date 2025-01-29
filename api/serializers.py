@@ -1,35 +1,66 @@
 from typing import Optional
-from drf_spectacular.utils import extend_schema_field
-from rest_framework import serializers
-from rest_framework_gis.serializers import GeoFeatureModelSerializer
 
-from beDoggo.models import User, Pet, Location, PetAccess
+from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field
+from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veterinarian
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'phone', 'address', 'on_boarding']
+        fields = ['id', 'uuid', 'email', 'first_name', 'last_name', 'profile_picture', 'phone', 'sex']
+
+
+class RegisterUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['email', 'password', 'first_name', 'last_name']
+
+    def create(self, validated_data):
+        user = User.objects.create_user(
+            email=validated_data['email'],
+            password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+        )
+        return user
 
 
 class PetSerializer(serializers.ModelSerializer):
+    owner = UserSerializer(read_only=True)
+
     class Meta:
         model = Pet
-        fields = ['id', 'name', 'breed', 'age', 'observations', 'is_lost', 'owner']
+        fields = '__all__'
         read_only_fields = ['owner']
 
 
-class LocationSerializer(GeoFeatureModelSerializer):
+class AccessCodeSerializer(serializers.ModelSerializer):
+    pet_name = serializers.CharField(source='pet.name', read_only=True)
+
+    class Meta:
+        model = AccessCode
+        fields = ['id', 'code', 'pet', 'pet_name', 'is_used', 'expires_at']
+
+
+class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
-        geo_field = 'location'  # Este es el campo geoespacial en el modelo
-        fields = ['id', 'location', 'timestamp', 'pet']
+        fields = '__all__'
 
 
-class PetAccessSerializer(serializers.ModelSerializer):
+class VeterinarianSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PetAccess
-        fields = ['id', 'user', 'pet']
+        model = Veterinarian
+        fields = '__all__'
+
+
+class MedicalRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MedicalRecord
+        fields = '__all__'
 
 
 class GoogleLoginSerializer(serializers.Serializer):
@@ -55,7 +86,7 @@ class LostPetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Pet
         fields = ['name', 'breed', 'age', 'owner_username', 'owner_phone', 'owner_email', 'latitude',
-                  'longitude']  # Aquí se agrega `owner_username`
+                  'longitude']
 
     def get_owner_username(self, obj) -> Optional[str]:
         # Aseguramos que `obj` es la instancia de la mascota (Pet)

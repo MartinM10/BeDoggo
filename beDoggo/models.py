@@ -1,28 +1,116 @@
+import hashlib
+import uuid
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.utils.timezone import now
 from django.contrib.gis.db import models
+from django.utils.translation import gettext_lazy as _
 
 
+# Modelo de usuario personalizado
 class User(AbstractUser):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    profile_picture = models.ImageField(upload_to='users/profile_pictures/', blank=True, null=True)
     email = models.EmailField(unique=True)
     address = models.TextField(blank=True, null=True)
+    prefix_phone = models.CharField(max_length=20, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
-    on_boarding = models.BooleanField(default=False)
 
+    class SexChoices(models.TextChoices):
+        MALE = 'Male', _('Hombre')
+        FEMALE = 'Female', _('Mujer')
+        OTHER = 'Other', _('Otros')
+
+    sex = models.CharField(
+        max_length=10,
+        choices=SexChoices.choices,
+        blank=True,
+        null=True
+    )
+
+    class AcquisitionChannelChoices(models.TextChoices):
+        ADVERTISEMENT = 'Advertisement', _('Publicidad')
+        RECOMMENDATION = 'Recommendation', _('Recomendación')
+        SOCIAL_MEDIA = 'Social Media', _('Redes Sociales')
+
+    acquisition_channel = models.CharField(
+        max_length=20,
+        choices=AcquisitionChannelChoices.choices,
+        blank=True,
+        null=True
+    )
+    birth_date = models.DateField(blank=True, null=True)
+    points = models.PositiveIntegerField(default=0)
+    onboarding_completed = models.BooleanField(default=False)
+    next_payment_date = models.DateTimeField(blank=True, null=True)
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = []  # Dejar vacío si no deseas requerir otros campos además del email y password
+    REQUIRED_FIELDS = []
 
     def __str__(self):
-        return f"{self.username}"
+        return f"{self.username if self.username else self.first_name} ({self.email})"
 
 
+# Modelo de veterinarios
+class Veterinarian(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='veterinarian_profile')
+    vet_license_number = models.CharField(max_length=50, unique=True)
+    clinic_name = models.CharField(max_length=100, blank=True, null=True)
+    clinic_address = models.TextField(blank=True, null=True)
+    clinic_phone = models.CharField(max_length=20, blank=True, null=True)
+    available_hours = models.CharField(max_length=100, blank=True, null=True)
+    created_at = models.DateTimeField(default=now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Veterinarian: {self.user.get_full_name()} - {self.clinic_name or 'No clinic'}"
+
+
+# Modelo de dispositivos GPS
+class GPSDevice(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    qr_code = models.CharField(max_length=255, unique=True)
+    is_active = models.BooleanField(default=False)
+    activated_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(default=now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Device {self.uuid} (Active: {self.is_active})"
+
+
+# Modelo de mascotas
 class Pet(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=100)
+
+    class SexChoices(models.TextChoices):
+        MALE = 'Male', _('Macho')
+        FEMALE = 'Female', _('Hembra')
+
+    sex = models.CharField(
+        max_length=10,
+        choices=SexChoices.choices,
+        blank=True,
+        null=True
+    )
     breed = models.CharField(max_length=100, blank=True, null=True)
+    color = models.CharField(max_length=100, blank=True, null=True)
     age = models.PositiveIntegerField()
+    weight = models.FloatField(null=True, blank=True)
+    chip_number = models.CharField(max_length=50, unique=True, null=True, blank=True)
     observations = models.TextField(blank=True, null=True)
+    sterilized = models.BooleanField(default=False)
     is_lost = models.BooleanField(default=False)
-    owner = models.ForeignKey(User, related_name='pets', on_delete=models.CASCADE)
+    phone_emergency = models.CharField(max_length=20, blank=True, null=True)
+
+    # Relaciones
+    owner = models.ForeignKey(User, related_name='owned_pets', on_delete=models.CASCADE)
+    device = models.OneToOneField(GPSDevice, on_delete=models.SET_NULL, blank=True, null=True)
+    veterinarian = models.ForeignKey(Veterinarian, on_delete=models.SET_NULL, blank=True, null=True,
+                                     related_name='pets')
+    shared_with = models.ManyToManyField(User, related_name='shared_pets', blank=True)
+
+    image = models.ImageField(upload_to='pets/images/', blank=True, null=True)
     created_at = models.DateTimeField(default=now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -30,25 +118,74 @@ class Pet(models.Model):
         return f"{self.name} ({'Lost' if self.is_lost else 'Not Lost'})"
 
 
+# Modelo de historial médico
+class MedicalRecord(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    pet = models.ForeignKey(Pet, related_name="medical_records", on_delete=models.CASCADE)
+    veterinarian = models.ForeignKey(Veterinarian, on_delete=models.CASCADE, related_name="medical_records")
+    date = models.DateTimeField(default=now)
+    visit_reason = models.CharField(max_length=200)
+    diagnosis = models.TextField(blank=True, null=True)
+    treatment = models.TextField(blank=True, null=True)
+    medication = models.TextField(blank=True, null=True)
+    vaccines = models.TextField(blank=True, null=True)
+    allergies = models.TextField(blank=True, null=True)
+    test_results = models.TextField(blank=True, null=True)
+    observations = models.TextField(blank=True, null=True)
+    next_visit = models.DateField(blank=True, null=True)
+    attachments = models.FileField(upload_to='medical_records/attachments/', blank=True, null=True)
+    images = models.ImageField(upload_to='medical_records/images/', blank=True, null=True)
+
+    def __str__(self):
+        return f"Medical Record for {self.pet.name} on {self.date}"
+
+
+# Modelo de localización
 class Location(models.Model):
-    location = models.PointField()  # Usamos PointField para las coordenadas geográficas
-    timestamp = models.DateTimeField(auto_now_add=True, verbose_name="Timestamp")
-    pet = models.ForeignKey(Pet, related_name='locations', on_delete=models.CASCADE)
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    location = models.PointField()  # Coordenadas
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    gps_device = models.ForeignKey(GPSDevice, on_delete=models.CASCADE, related_name='locations')
+
     created_at = models.DateTimeField(default=now)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Location of {self.pet.name} at {self.timestamp}"
+        return f"Location from device {self.gps_device.uuid} at {self.timestamp}"
 
 
-class PetAccess(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="accessible_pets")
-    pet = models.ForeignKey(Pet, on_delete=models.CASCADE, related_name="access_grants")
+# Modelo de códigos de acceso
+class AccessCode(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    code = models.CharField(max_length=64, unique=True)
+    pet = models.ForeignKey(Pet, on_delete=models.CASCADE, related_name='access_codes')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='generated_codes')
+    is_used = models.BooleanField(default=False)
+    expires_at = models.DateTimeField(blank=True, null=True)
 
-    class Meta:
-        unique_together = ("user", "pet")
-        verbose_name = "Pet Access"
-        verbose_name_plural = "Pet Accesses"
+    created_at = models.DateTimeField(default=now)
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            unique_data = f"{self.pet.uuid}{self.created_by.uuid}{uuid.uuid4()}"
+            self.code = hashlib.sha256(unique_data.encode()).hexdigest()
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def validate_code(code, user):
+        try:
+            access_code = AccessCode.objects.get(code=code)
+        except AccessCode.DoesNotExist:
+            raise ValidationError("The code does not exist.")
+        if access_code.is_used:
+            raise ValidationError("Code already used.")
+        if access_code.expires_at and access_code.expires_at < now():
+            raise ValidationError("The code has expired.")
+        access_code.pet.shared_with.add(user)  # Otorga acceso al usuario
+        access_code.is_used = True
+        access_code.save()
+        return access_code.pet
 
     def __str__(self):
-        return f"{self.user.email} has access to {self.pet.name}"
+        return f"Code for {self.pet.name} (Used: {self.is_used})"

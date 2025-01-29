@@ -11,5 +11,4 @@ urlpatterns = [
     path('add-pet/', add_pet_view, name='add-pet'),
     path('edit-pet/<int:pet_id>/', edit_pet_view, name='edit-pet'),
     path('delete-pet/<int:pet_id>/', delete_pet_view, name='delete-pet'),
-    path('dashboard/', dashboard_view, name='dashboard'),
 ]
