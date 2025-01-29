@@ -1,5 +1,4 @@
 from typing import Optional
-
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
 from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veterinarian
@@ -8,7 +7,7 @@ from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veter
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'uuid', 'email', 'first_name', 'last_name', 'profile_picture', 'phone', 'sex']
+        fields = ['id', 'uuid', 'email', 'first_name', 'last_name', 'phone', 'sex']
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):
