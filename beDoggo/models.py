@@ -1,4 +1,6 @@
 import hashlib
+import random
+import string
 import uuid
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
@@ -58,24 +60,35 @@ class Veterinarian(models.Model):
     clinic_address = models.TextField(blank=True, null=True)
     clinic_phone = models.CharField(max_length=20, blank=True, null=True)
     available_hours = models.CharField(max_length=100, blank=True, null=True)
-    created_at = models.DateTimeField(default=now)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Veterinarian: {self.user.get_full_name()} - {self.clinic_name or 'No clinic'}"
 
 
-# Modelo de dispositivos GPS
+def generate_device_code():
+    """Genera un código único de 6 caracteres alfanuméricos."""
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+
 class GPSDevice(models.Model):
-    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
-    qr_code = models.CharField(max_length=255, unique=True)
+    code = models.CharField(max_length=10, unique=True, blank=False, null=False)  # 🔹 Ahora es obligatorio
     is_active = models.BooleanField(default=False)
     activated_at = models.DateTimeField(blank=True, null=True)
-    created_at = models.DateTimeField(default=now)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def save(self, *args, **kwargs):
+        """Genera un código único si no se proporciona manualmente."""
+        if not self.code:
+            self.code = generate_device_code()
+            while GPSDevice.objects.filter(code=self.code).exists():
+                self.code = generate_device_code()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"Device {self.uuid} (Active: {self.is_active})"
+        return f"Device {self.code} (Active: {self.is_active})"
 
 
 # Modelo de mascotas
@@ -95,7 +108,7 @@ class Pet(models.Model):
     )
     breed = models.CharField(max_length=100, blank=True, null=True)
     color = models.CharField(max_length=100, blank=True, null=True)
-    age = models.PositiveIntegerField()
+    age = models.PositiveIntegerField()  # CAMBIAR POR FECHA DE NACIMIENTO DE LA MASCOTA
     weight = models.FloatField(null=True, blank=True)
     chip_number = models.CharField(max_length=50, unique=True, null=True, blank=True)
     observations = models.TextField(blank=True, null=True)
@@ -111,7 +124,7 @@ class Pet(models.Model):
     shared_with = models.ManyToManyField(User, related_name='shared_pets', blank=True)
 
     image = models.ImageField(upload_to='pets/images/', blank=True, null=True)
-    created_at = models.DateTimeField(default=now)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -123,7 +136,7 @@ class MedicalRecord(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     pet = models.ForeignKey(Pet, related_name="medical_records", on_delete=models.CASCADE)
     veterinarian = models.ForeignKey(Veterinarian, on_delete=models.CASCADE, related_name="medical_records")
-    date = models.DateTimeField(default=now)
+    date = models.DateTimeField(auto_now_add=now)
     visit_reason = models.CharField(max_length=200)
     diagnosis = models.TextField(blank=True, null=True)
     treatment = models.TextField(blank=True, null=True)
@@ -148,7 +161,7 @@ class Location(models.Model):
 
     gps_device = models.ForeignKey(GPSDevice, on_delete=models.CASCADE, related_name='locations', blank=True, null=True)
 
-    created_at = models.DateTimeField(default=now)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
@@ -164,7 +177,7 @@ class AccessCode(models.Model):
     is_used = models.BooleanField(default=False)
     expires_at = models.DateTimeField(blank=True, null=True)
 
-    created_at = models.DateTimeField(default=now)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
         if not self.code:

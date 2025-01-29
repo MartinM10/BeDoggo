@@ -7,7 +7,7 @@ from .views import (
     LostPetsNearbyView, LocationListCreateView, LocationDetailView,
     VeterinarianListCreateView, VeterinarianDetailView,
     MedicalRecordListCreateView, MedicalRecordDetailView, PetSearchView, SharedPetsView, OnboardingView,
-    AssociateGPSDeviceView
+    AssociateGPSDeviceView, GPSDeviceListCreateView, GPSDeviceDetailView, ActivateGPSDeviceView
 )
 
 urlpatterns = [
@@ -25,16 +25,21 @@ urlpatterns = [
 
     # Mascotas
     path('pets/', PetListCreateView.as_view(), name='pet-list-create'),
-    path('pets/<uuid:pet_id>/', PetDetailView.as_view(), name='pet-detail'),
+    path('pets/<uuid:uuid>/', PetDetailView.as_view(), name='pet-detail'),
     path('pets/<uuid:pet_id>/access-code/', PetAccessCodeView.as_view(), name='pet-access-code'),
     path('pets/access-code/validate/', AccessCodeValidationView.as_view(), name='access-code-validate'),
     path('pets/search/', PetSearchView.as_view(), name='pet-search'),
     path('pets/shared/', SharedPetsView.as_view(), name='shared-pets'),
     path('pets/<uuid:pet_id>/associate-device/', AssociateGPSDeviceView.as_view(), name='associate-device'),
 
+    # Dispositivos GPS
+    path('gps-devices/', GPSDeviceListCreateView.as_view(), name='gps-device-list-create'),
+    path('gps-devices/<uuid:uuid>/', GPSDeviceDetailView.as_view(), name='gps-device-detail'),
+    path('gps-devices/<uuid:uuid>/activate/', ActivateGPSDeviceView.as_view(), name='gps-device-activate'),
+
     # Ubicaciones
     path('locations/', LocationListCreateView.as_view(), name='location-list-create'),
-    path('locations/<int:pk>/', LocationDetailView.as_view(), name='location-detail'),
+    path('locations/<uuid:uuid>/', LocationDetailView.as_view(), name='location-detail'),
     path('locations/lost-pets/', LostPetsNearbyView.as_view(), name='lost-pets'),
 
     # Veterinarios

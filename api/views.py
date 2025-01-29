@@ -9,7 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veterinarian, GPSDevice
 from .serializers import UserSerializer, PetSerializer, LostPetSerializer, \
     GoogleLoginSerializer, RegisterUserSerializer, AccessCodeSerializer, LocationSerializer, MedicalRecordSerializer, \
-    VeterinarianSerializer
+    VeterinarianSerializer, GPSDeviceSerializer
 from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D  # Distancia
 from django.contrib.gis.db.models.functions import Distance
@@ -63,18 +63,32 @@ class RegisterUserView(APIView):
 
     @extend_schema(
         summary="Registrar usuario",
-        description="Registra un nuevo usuario en el sistema.",
+        description="Registra un nuevo usuario en el sistema y devuelve tokens JWT.",
         request=RegisterUserSerializer,
         responses={
-            201: {"message": "Usuario registrado exitosamente"},
+            201: {
+                "message": "Usuario registrado exitosamente",
+                "access": "token_access",
+                "refresh": "token_refresh"
+            },
             400: {"error": "Errores de validación."},
         },
     )
     def post(self, request):
         serializer = RegisterUserSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response({"message": "Usuario registrado exitosamente"}, status=status.HTTP_201_CREATED)
+            user = serializer.save()
+
+            # Generar tokens JWT
+            refresh = RefreshToken.for_user(user)
+            access_token = str(refresh.access_token)
+
+            return Response({
+                "message": "Usuario registrado exitosamente",
+                "access": access_token,
+                "refresh": str(refresh),
+            }, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -82,17 +96,34 @@ class OnboardingView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        summary="Completar onboarding",
-        description="Permite a los usuarios completar el proceso de onboarding.",
-        request=UserSerializer,
-        responses={200: UserSerializer}
+        summary="Completar onboarding y registrar mascota",
+        description="Permite a los usuarios completar el proceso de onboarding y registrar una mascota. "
+                    "Si se proporciona un `gps_device`, se asociará con la mascota.",
+        request=PetSerializer,
+        responses={201: PetSerializer, 400: {"error": "Errores de validación."}}
     )
     def post(self, request):
-        user = request.user
-        serializer = UserSerializer(user, data=request.data, partial=True)
+        user = request.user  # Usuario autenticado
+
+        # Procesar datos de la mascota
+        pet_data = request.data.copy()
+
+        # Si el usuario proporciona un GPSDevice, se asocia
+        gps_device_code = pet_data.get("gps_device_code")
+        if gps_device_code:
+            try:
+                gps_device, created = GPSDevice.objects.get_or_create(code=gps_device_code)
+                pet_data['gps_device_code'] = gps_device.id  # Asignar el GPS a la mascota
+            except GPSDevice.DoesNotExist:
+                return Response({"error": "El dispositivo GPS proporcionado no existe."},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        # Serializar y guardar la mascota con el dueño asignado manualmente
+        serializer = PetSerializer(data=pet_data)
         if serializer.is_valid():
-            serializer.save(onboarding_completed=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            pet = serializer.save(owner=user)  # 🔹 Aquí se asigna el dueño correctamente
+            return Response(PetSerializer(pet).data, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -115,13 +146,15 @@ class PetListCreateView(generics.ListCreateAPIView):
 class PetDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = PetSerializer
     permission_classes = [IsAuthenticated]
+    lookup_field = 'uuid'  # Se usará 'uuid' en lugar del ID por defecto
 
     @extend_schema(summary="Detalles de una mascota")
     def get_queryset(self):
         return Pet.objects.filter(owner=self.request.user)
 
 
-class PetAccessCodeView(APIView):
+class PetAccessCodeView(generics.CreateAPIView):
+    serializer_class = AccessCodeSerializer
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -228,8 +261,17 @@ class LocationListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Solo devuelve ubicaciones de las mascotas del usuario
-        return Location.objects.filter(pet__owner=self.request.user).order_by('id')
+        return Location.objects.filter(
+            gps_device__pet__owner=self.request.user
+        ).order_by('-timestamp')
+
+    def perform_create(self, serializer):
+        # Ejemplo: Crear ubicación desde lat/lon
+        latitude = self.request.data.get('latitude')
+        longitude = self.request.data.get('longitude')
+
+        point = Point(float(longitude), float(latitude))  # ¡Ojo al orden! (x=longitude, y=latitude)
+        serializer.save(location=point, gps_device_id=self.request.data.get('gps_device'))
 
 
 class LocationDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -237,7 +279,6 @@ class LocationDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Solo permite ver ubicaciones de mascotas del usuario
         return Location.objects.filter(gps_device__pet__owner=self.request.user)
 
 
@@ -287,11 +328,12 @@ class LostPetsNearbyView(APIView):
         # Filtrar mascotas perdidas dentro de la distancia especificada
         lost_pets = Pet.objects.filter(
             is_lost=True,
-            locations__location__distance_lte=(user_location, D(km=distance))
+            # gps_device__locations__location__distance_lte=(user_location, D(km=distance))  # <-- CAMBIO AQUÍ
+            gps_device__isnull=False,  # Solo mascotas con GPS
+            gps_device__locations__location__distance_lte=(user_location, D(km=distance))
         ).annotate(
-            distance=Distance('locations__location', user_location)
-        ).select_related('owner').order_by('distance')  # Ordenar por distancia
-
+            distance=Distance('gps_device__locations__location', user_location)  # <-- Y AQUÍ
+        ).select_related('owner', 'gps_device').prefetch_related('gps_device__locations').order_by('distance')
         # Serializar los resultados
         serializer = LostPetSerializer(lost_pets, many=True)
         return Response(serializer.data)
@@ -400,3 +442,80 @@ class MedicalRecordDetailView(generics.RetrieveAPIView):
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
+
+
+class GPSDeviceListCreateView(generics.ListCreateAPIView):
+    queryset = GPSDevice.objects.all()
+    serializer_class = GPSDeviceSerializer
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Listar y registrar dispositivos GPS",
+        description="Devuelve todos los dispositivos GPS registrados. "
+                    "También permite a un administrador registrar un nuevo dispositivo.",
+        responses={200: GPSDeviceSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Registrar un nuevo dispositivo GPS",
+        description="Registra un nuevo dispositivo GPS en el sistema.",
+        request=GPSDeviceSerializer,
+        responses={201: GPSDeviceSerializer}
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
+
+
+class GPSDeviceDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = GPSDevice.objects.all()
+    serializer_class = GPSDeviceSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "uuid"
+
+    @extend_schema(
+        summary="Obtener detalles de un dispositivo GPS",
+        description="Devuelve la información de un dispositivo GPS específico.",
+        responses={200: GPSDeviceSerializer}
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Actualizar un dispositivo GPS",
+        description="Modifica los datos de un dispositivo GPS.",
+        request=GPSDeviceSerializer,
+        responses={200: GPSDeviceSerializer}
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    @extend_schema(
+        summary="Eliminar un dispositivo GPS",
+        description="Elimina un dispositivo GPS del sistema.",
+        responses={204: None}
+    )
+    def delete(self, request, *args, **kwargs):
+        return super().delete(request, *args, **kwargs)
+
+
+class ActivateGPSDeviceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Activar un dispositivo GPS",
+        description="Activa un dispositivo GPS por su UUID.",
+        responses={200: {"message": "Dispositivo activado exitosamente."}}
+    )
+    def post(self, request, uuid):
+        try:
+            gps_device = GPSDevice.objects.get(uuid=uuid)
+            if gps_device.is_active:
+                return Response({"error": "El dispositivo ya está activado."}, status=status.HTTP_400_BAD_REQUEST)
+
+            gps_device.is_active = True
+            gps_device.save()
+            return Response({"message": "Dispositivo activado exitosamente."}, status=status.HTTP_200_OK)
+        except GPSDevice.DoesNotExist:
+            return Response({"error": "El dispositivo GPS no existe."}, status=status.HTTP_404_NOT_FOUND)
