@@ -1,5 +1,4 @@
 from django.shortcuts import redirect
-from django.utils.timezone import now
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token
 from rest_framework import generics, status
@@ -7,12 +6,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework_simplejwt.tokens import RefreshToken
-
-from BeDoggo import settings
 from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veterinarian, GPSDevice
 from .serializers import UserSerializer, PetSerializer, LostPetSerializer, \
     GoogleLoginSerializer, RegisterUserSerializer, AccessCodeSerializer, LocationSerializer, MedicalRecordSerializer, \
-    VeterinarianSerializer, GPSDeviceSerializer
+    VeterinarianSerializer, GPSDeviceSerializer, AssociateGPSDeviceSerializer
 from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D  # Distancia
 from django.contrib.gis.db.models.functions import Distance
@@ -131,7 +128,7 @@ class OnboardingView(APIView):
         if gps_device_code:
             try:
                 gps_device, created = GPSDevice.objects.get_or_create(code=gps_device_code)
-                pet_data['gps_device_code'] = gps_device.id  # Asignar el GPS a la mascota
+                pet_data['gps_device_code'] = gps_device.code
             except GPSDevice.DoesNotExist:
                 return Response({"error": "El dispositivo GPS proporcionado no existe."},
                                 status=status.HTTP_400_BAD_REQUEST)
@@ -184,25 +181,6 @@ class PetAccessCodeView(generics.CreateAPIView):
         access_code = AccessCode.objects.create(pet=pet, created_by=request.user)
         serializer = AccessCodeSerializer(access_code)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-class AssociateGPSDeviceView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        summary="Asociar dispositivo GPS a una mascota",
-        description="Permite a los usuarios asociar un dispositivo GPS a una mascota.",
-        request=PetSerializer,
-        responses={200: PetSerializer}
-    )
-    def post(self, request, pet_id):
-        pet = Pet.objects.get(uuid=pet_id, owner=request.user)
-        device_id = request.data.get('device_id')
-        device = GPSDevice.objects.get(uuid=device_id)
-        pet.device = device
-        pet.save()
-        serializer = PetSerializer(pet)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class PetSearchView(APIView):
@@ -279,49 +257,47 @@ class LocationListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        summary="Listar y crear ubicaciones",
-        description="Permite a los usuarios listar las ubicaciones de sus mascotas asociadas a dispositivos GPS o crear una nueva ubicación para una mascota específica.",
+        summary="Listar y registrar ubicaciones",
+        description="Permite a los usuarios obtener la lista de ubicaciones de sus mascotas o registrar una nueva ubicación con latitud, longitud y código del GPS.",
+        parameters=[
+            OpenApiParameter(name="latitude", description="Latitud de la ubicación", required=True, type=float),
+            OpenApiParameter(name="longitude", description="Longitud de la ubicación", required=True, type=float),
+            OpenApiParameter(name="gps_device_code", description="Código del dispositivo GPS", required=True, type=str),
+        ],
         request=LocationSerializer,
-        responses={
-            200: LocationSerializer,
-            400: {"error": "Se requieren latitude y longitude"},
-            403: {"error": "No tienes permiso para usar este dispositivo."},
-            404: {"error": "El dispositivo GPS no existe."},
-        },
+        responses={200: LocationSerializer, 201: LocationSerializer}
     )
     def get_queryset(self):
         return Location.objects.filter(
             gps_device__pet__owner=self.request.user
         ).order_by('-timestamp')
 
-    def perform_create(self, serializer):
-        latitude = self.request.data.get('latitude')
-        longitude = self.request.data.get('longitude')
-        gps_code = self.request.data.get('gps_device')
+    def create(self, request, *args, **kwargs):
+        latitude = request.data.get('latitude')
+        longitude = request.data.get('longitude')
+        gps_code = request.data.get('gps_device_code')
 
-        # Verifica que latitude y longitude estén presentes
-        if not latitude or not longitude:
-            return Response({"error": "Se requieren latitude y longitude"}, status=status.HTTP_400_BAD_REQUEST)
+        if not all([latitude, longitude, gps_code]):
+            return Response({"error": "Se requieren latitude, longitude y gps_device_code"},
+                            status=status.HTTP_400_BAD_REQUEST)
 
-        # Verifica si el GPS existe antes de continuar
-        gps_device = None
         try:
             gps_device = GPSDevice.objects.get(code=gps_code)
         except GPSDevice.DoesNotExist:
             return Response({"error": "El dispositivo GPS no existe."}, status=status.HTTP_404_NOT_FOUND)
 
-        # 🔹 Verifica que el GPS tenga una mascota asociada y que el usuario sea el dueño
-        if not hasattr(gps_device, 'pet') or gps_device.pet.owner != self.request.user:
-            return Response({"error": "No tienes permiso para usar este dispositivo."},
+        if not hasattr(gps_device, 'pet') or gps_device.pet.owner != request.user:
+            return Response({"error": "El dispositivo GPS no está asociado a una mascota tuya. "
+                                      "No tienes permiso para usar este dispositivo GPS."},
                             status=status.HTTP_403_FORBIDDEN)
 
-        # 🔹 Verifica que el GPS esté activado
         if not gps_device.is_active:
             return Response({"error": "El dispositivo GPS no está activado."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 🔹 Crea el objeto Location si todas las validaciones pasan
         point = Point(float(longitude), float(latitude))
-        serializer.save(location=point, gps_device=gps_device)
+        location = Location.objects.create(location=point, gps_device=gps_device)
+
+        return Response(LocationSerializer(location).data, status=status.HTTP_201_CREATED)
 
 
 class LocationDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -378,11 +354,10 @@ class LostPetsNearbyView(APIView):
         # Filtrar mascotas perdidas dentro de la distancia especificada
         lost_pets = Pet.objects.filter(
             is_lost=True,
-            # gps_device__locations__location__distance_lte=(user_location, D(km=distance))  # <-- CAMBIO AQUÍ
             gps_device__isnull=False,  # Solo mascotas con GPS
             gps_device__locations__location__distance_lte=(user_location, D(km=distance))
         ).annotate(
-            distance=Distance('gps_device__locations__location', user_location)  # <-- Y AQUÍ
+            distance=Distance('gps_device__locations__location', user_location)
         ).select_related('owner', 'gps_device').prefetch_related('gps_device__locations').order_by('distance')
         # Serializar los resultados
         serializer = LostPetSerializer(lost_pets, many=True)
@@ -550,44 +525,36 @@ class GPSDeviceDetailView(generics.RetrieveUpdateDestroyAPIView):
         return super().delete(request, *args, **kwargs)
 
 
-class ActivateGPSDeviceView(APIView):
+class AssociateGPSDeviceView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        summary="Activar un dispositivo GPS",
-        description="Activa un dispositivo GPS por su código.",
-        responses={200: {"message": "Dispositivo activado exitosamente."}}
+        summary="Asociar dispositivo GPS a una mascota",
+        description="Permite a los usuarios asociar un dispositivo GPS a una mascota.",
+        request=AssociateGPSDeviceSerializer,  # Usamos el serializer que solo recibe device_id
+        responses={200: PetSerializer}
     )
-    def post(self, request, code):
+    def post(self, request, pet_id):
+        # Obtenemos la mascota a través del pet_id y validamos que el usuario sea el dueño
         try:
-            gps_device = GPSDevice.objects.get(code=code)
-            if gps_device.is_active:
-                return Response({"error": "El dispositivo ya está activado."}, status=status.HTTP_400_BAD_REQUEST)
+            pet = Pet.objects.get(uuid=pet_id, owner=request.user)
+        except Pet.DoesNotExist:
+            return Response({"detail": "Pet not found."}, status=status.HTTP_404_NOT_FOUND)
 
-            gps_device.is_active = True
-            gps_device.activated_at = now()
-            gps_device.save()
-            return Response({"message": "Dispositivo activado exitosamente."}, status=status.HTTP_200_OK)
-        except GPSDevice.DoesNotExist:
-            return Response({"error": "El dispositivo GPS no existe."}, status=status.HTTP_404_NOT_FOUND)
+        # Obtenemos el device_id de la petición
+        gps_device_code = request.data.get('gps_device_code')
 
-
-class DeactivateGPSDeviceView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        summary="Desactivar un dispositivo GPS",
-        description="Desactiva un dispositivo GPS por su código.",
-        responses={200: {"message": "Dispositivo desactivado exitosamente."}}
-    )
-    def post(self, request, code):
+        # Validamos si el dispositivo GPS existe
         try:
-            gps_device = GPSDevice.objects.get(code=code)
-            if not gps_device.is_active:
-                return Response({"error": "El dispositivo ya está desactivado."}, status=status.HTTP_400_BAD_REQUEST)
-
-            gps_device.is_active = False
-            gps_device.save()
-            return Response({"message": "Dispositivo desactivado exitosamente."}, status=status.HTTP_200_OK)
+            device = GPSDevice.objects.get(code=gps_device_code)
         except GPSDevice.DoesNotExist:
-            return Response({"error": "El dispositivo GPS no existe."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "GPS Device not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Asociamos el dispositivo GPS a la mascota
+        pet.gps_device = device
+        pet.save()
+
+        # Serializamos la mascota actualizada
+        serializer = PetSerializer(pet)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)

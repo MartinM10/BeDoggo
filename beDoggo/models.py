@@ -9,27 +9,28 @@ from django.contrib.gis.db import models
 from django.utils.translation import gettext_lazy as _
 
 
+class SexUserChoices(models.TextChoices):
+    MALE = 'Male', _('Hombre')
+    FEMALE = 'Female', _('Mujer')
+    OTHER = 'Other', _('Otros')
+
+
+class SexPetChoices(models.TextChoices):
+    MALE = 'Male', _('Macho')
+    FEMALE = 'Female', _('Hembra')
+
+
 # Modelo de usuario personalizado
 class User(AbstractUser):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    username = models.CharField(max_length=100, blank=True, null=True)
     profile_picture = models.URLField(null=True, blank=True)
     email = models.EmailField(unique=True)
     email_verified = models.BooleanField(default=False)
     address = models.TextField(blank=True, null=True)
     prefix_phone = models.CharField(max_length=20, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
-
-    class SexChoices(models.TextChoices):
-        MALE = 'Male', _('Hombre')
-        FEMALE = 'Female', _('Mujer')
-        OTHER = 'Other', _('Otros')
-
-    sex = models.CharField(
-        max_length=10,
-        choices=SexChoices.choices,
-        blank=True,
-        null=True
-    )
+    sex = models.CharField(max_length=10, choices=SexUserChoices.choices, blank=True, null=True)
 
     class AcquisitionChannelChoices(models.TextChoices):
         ADVERTISEMENT = 'Advertisement', _('Publicidad')
@@ -97,17 +98,7 @@ class GPSDevice(models.Model):
 class Pet(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     name = models.CharField(max_length=100)
-
-    class SexChoices(models.TextChoices):
-        MALE = 'Male', _('Macho')
-        FEMALE = 'Female', _('Hembra')
-
-    sex = models.CharField(
-        max_length=10,
-        choices=SexChoices.choices,
-        blank=True,
-        null=True
-    )
+    sex = models.CharField(max_length=10, choices=SexPetChoices.choices, blank=True, null=True)
     breed = models.CharField(max_length=100, blank=True, null=True)
     color = models.CharField(max_length=100, blank=True, null=True)
     age = models.PositiveIntegerField()  # CAMBIAR POR FECHA DE NACIMIENTO DE LA MASCOTA
