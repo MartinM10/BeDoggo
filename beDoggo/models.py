@@ -12,8 +12,9 @@ from django.utils.translation import gettext_lazy as _
 # Modelo de usuario personalizado
 class User(AbstractUser):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    profile_picture = models.ImageField(upload_to='users/profile_pictures/', blank=True, null=True)
+    profile_picture = models.URLField(null=True, blank=True)
     email = models.EmailField(unique=True)
+    email_verified = models.BooleanField(default=False)
     address = models.TextField(blank=True, null=True)
     prefix_phone = models.CharField(max_length=20, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
@@ -48,6 +49,7 @@ class User(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
 
+    # REQUIRED_FIELDS = ['first_name', 'last_name']
     def __str__(self):
         return f"{self.username if self.username else self.first_name} ({self.email})"
 

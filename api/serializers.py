@@ -23,23 +23,38 @@ class LocationSerializer(serializers.ModelSerializer):
     longitude = serializers.FloatField(source='location.x')
     device = GPSDeviceSerializer(source='gps_device', read_only=True)
     pet = serializers.SerializerMethodField()
-    owner = serializers.SerializerMethodField()
 
     class Meta:
         model = Location
-        fields = [
-            'uuid', 'timestamp', 'latitude', 'longitude',
-            'device', 'pet', 'owner'
-        ]
+        fields = ['uuid', 'timestamp', 'latitude', 'longitude', 'device', 'pet']
 
     def get_pet(self, obj):
-        if obj.gps_device and obj.gps_device.pet_set.exists():
-            return PetSerializer(obj.gps_device.pet_set.first()).data
+        """
+        Retorna información de la mascota si el GPS tiene una asociada.
+        """
+        if isinstance(obj, dict):
+            # Si `obj` es un diccionario, intenta obtener el GPS manualmente
+            gps_device_id = obj.get('gps_device')
+            if not gps_device_id:
+                return None
+            try:
+                gps_device = GPSDevice.objects.get(id=gps_device_id)
+                print(gps_device)
+                if hasattr(gps_device, 'pet'):
+                    return {
+                        "name": gps_device.pet.name,
+                        "age": gps_device.pet.age
+                    }
+            except GPSDevice.DoesNotExist:
+                return None
+        else:
+            # Si `obj` es un modelo `Location`, accede a la relación correctamente
+            if obj.gps_device and hasattr(obj.gps_device, 'pet'):
+                return {
+                    "name": obj.gps_device.pet.name,
+                    "age": obj.gps_device.pet.age
+                }
         return None
-
-    def get_owner(self, obj):
-        pet = obj.gps_device.pet_set.first() if obj.gps_device else None
-        return UserSerializer(pet.owner).data if pet else None
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):
@@ -69,7 +84,7 @@ class VeterinarianSerializer(serializers.ModelSerializer):
 class PetSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)
     veterinarian = VeterinarianSerializer(read_only=True)
-    gps_device_code = GPSDeviceSerializer(read_only=True)
+    gps_device = GPSDeviceSerializer()
 
     class Meta:
         model = Pet
@@ -92,14 +107,10 @@ class MedicalRecordSerializer(serializers.ModelSerializer):
 
 
 class GoogleLoginSerializer(serializers.Serializer):
-    # El token de acceso que recibimos de Google
-    access_token = serializers.CharField(required=True, write_only=True)
+    # El token de ID recibido de Google (obligatorio para validar la identidad)
+    id_token = serializers.CharField(required=True, write_only=True)
 
-    # Si también quieres el token de ID para verificar los datos del usuario, puedes incluirlo
-    id_token = serializers.CharField(required=False, write_only=True)
-
-    # Otras posibles validaciones o datos que quieras procesar
-    # Por ejemplo, puedes recibir el correo electrónico o el nombre del usuario
+    # Otros datos que se pueden enviar (aunque no son estrictamente necesarios para la autenticación)
     email = serializers.EmailField(required=False)
     name = serializers.CharField(required=False)
 

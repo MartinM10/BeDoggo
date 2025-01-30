@@ -1,11 +1,14 @@
 from django.shortcuts import redirect
-from google.auth.transport import requests
+from django.utils.timezone import now
+from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from BeDoggo import settings
 from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veterinarian, GPSDevice
 from .serializers import UserSerializer, PetSerializer, LostPetSerializer, \
     GoogleLoginSerializer, RegisterUserSerializer, AccessCodeSerializer, LocationSerializer, MedicalRecordSerializer, \
@@ -35,18 +38,33 @@ class GoogleLoginView(APIView):
     def post(self, request):
         serializer = GoogleLoginSerializer(data=request.data)
         if serializer.is_valid():
-            token = serializer.validated_data.get('access_token')
+            token = serializer.validated_data.get('id_token')  # Ahora obtenemos el id_token
             try:
-                idinfo = id_token.verify_oauth2_token(token, requests.Request())
+                # Crear una solicitud de tipo 'requests' para pasarla al método de verificación de Google
+                google_request = GoogleRequest()
+
+                # Verificar el token con Google
+                # idinfo = id_token.verify_oauth2_token(token, google_request, settings.GOOGLE_CLIENT_ID)
+                idinfo = id_token.verify_oauth2_token(token, google_request)
+                # Obtener la información relevante del usuario
                 email = idinfo.get('email')
+                email_verified = idinfo.get('email_verified', False)
+                first_name = idinfo.get('given_name', '')
+                last_name = idinfo.get('family_name', '')
+                picture = idinfo.get('picture', '')  # Foto de perfil (opcional)
+
+                # Obtener o crear un nuevo usuario
                 user, created = User.objects.get_or_create(
                     email=email,
+                    email_verified=email_verified,
                     defaults={
-                        "username": email.split('@')[0],
-                        "first_name": idinfo.get('given_name', ''),
-                        "last_name": idinfo.get('family_name', ''),
+                        "username": email.split('@')[0],  # Utilizamos el email como username por defecto
+                        "first_name": first_name,
+                        "last_name": last_name,
+                        "profile_picture": picture,
                     },
                 )
+                # Generar tokens de acceso (JWT)
                 refresh = RefreshToken.for_user(user)
                 return Response({
                     "access": str(refresh.access_token),
@@ -260,18 +278,50 @@ class LocationListCreateView(generics.ListCreateAPIView):
     serializer_class = LocationSerializer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="Listar y crear ubicaciones",
+        description="Permite a los usuarios listar las ubicaciones de sus mascotas asociadas a dispositivos GPS o crear una nueva ubicación para una mascota específica.",
+        request=LocationSerializer,
+        responses={
+            200: LocationSerializer,
+            400: {"error": "Se requieren latitude y longitude"},
+            403: {"error": "No tienes permiso para usar este dispositivo."},
+            404: {"error": "El dispositivo GPS no existe."},
+        },
+    )
     def get_queryset(self):
         return Location.objects.filter(
             gps_device__pet__owner=self.request.user
         ).order_by('-timestamp')
 
     def perform_create(self, serializer):
-        # Ejemplo: Crear ubicación desde lat/lon
         latitude = self.request.data.get('latitude')
         longitude = self.request.data.get('longitude')
+        gps_code = self.request.data.get('gps_device')
 
-        point = Point(float(longitude), float(latitude))  # ¡Ojo al orden! (x=longitude, y=latitude)
-        serializer.save(location=point, gps_device_id=self.request.data.get('gps_device'))
+        # Verifica que latitude y longitude estén presentes
+        if not latitude or not longitude:
+            return Response({"error": "Se requieren latitude y longitude"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Verifica si el GPS existe antes de continuar
+        gps_device = None
+        try:
+            gps_device = GPSDevice.objects.get(code=gps_code)
+        except GPSDevice.DoesNotExist:
+            return Response({"error": "El dispositivo GPS no existe."}, status=status.HTTP_404_NOT_FOUND)
+
+        # 🔹 Verifica que el GPS tenga una mascota asociada y que el usuario sea el dueño
+        if not hasattr(gps_device, 'pet') or gps_device.pet.owner != self.request.user:
+            return Response({"error": "No tienes permiso para usar este dispositivo."},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        # 🔹 Verifica que el GPS esté activado
+        if not gps_device.is_active:
+            return Response({"error": "El dispositivo GPS no está activado."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 🔹 Crea el objeto Location si todas las validaciones pasan
+        point = Point(float(longitude), float(latitude))
+        serializer.save(location=point, gps_device=gps_device)
 
 
 class LocationDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -472,7 +522,7 @@ class GPSDeviceDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = GPSDevice.objects.all()
     serializer_class = GPSDeviceSerializer
     permission_classes = [IsAuthenticated]
-    lookup_field = "uuid"
+    lookup_field = "code"
 
     @extend_schema(
         summary="Obtener detalles de un dispositivo GPS",
@@ -505,17 +555,39 @@ class ActivateGPSDeviceView(APIView):
 
     @extend_schema(
         summary="Activar un dispositivo GPS",
-        description="Activa un dispositivo GPS por su UUID.",
+        description="Activa un dispositivo GPS por su código.",
         responses={200: {"message": "Dispositivo activado exitosamente."}}
     )
-    def post(self, request, uuid):
+    def post(self, request, code):
         try:
-            gps_device = GPSDevice.objects.get(uuid=uuid)
+            gps_device = GPSDevice.objects.get(code=code)
             if gps_device.is_active:
                 return Response({"error": "El dispositivo ya está activado."}, status=status.HTTP_400_BAD_REQUEST)
 
             gps_device.is_active = True
+            gps_device.activated_at = now()
             gps_device.save()
             return Response({"message": "Dispositivo activado exitosamente."}, status=status.HTTP_200_OK)
+        except GPSDevice.DoesNotExist:
+            return Response({"error": "El dispositivo GPS no existe."}, status=status.HTTP_404_NOT_FOUND)
+
+
+class DeactivateGPSDeviceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        summary="Desactivar un dispositivo GPS",
+        description="Desactiva un dispositivo GPS por su código.",
+        responses={200: {"message": "Dispositivo desactivado exitosamente."}}
+    )
+    def post(self, request, code):
+        try:
+            gps_device = GPSDevice.objects.get(code=code)
+            if not gps_device.is_active:
+                return Response({"error": "El dispositivo ya está desactivado."}, status=status.HTTP_400_BAD_REQUEST)
+
+            gps_device.is_active = False
+            gps_device.save()
+            return Response({"message": "Dispositivo desactivado exitosamente."}, status=status.HTTP_200_OK)
         except GPSDevice.DoesNotExist:
             return Response({"error": "El dispositivo GPS no existe."}, status=status.HTTP_404_NOT_FOUND)
