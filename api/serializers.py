@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
-from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veterinarian, GPSDevice
+from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veterinarian, GPSDevice, SexUserChoices
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -21,19 +21,20 @@ class AssociateGPSDeviceSerializer(serializers.Serializer):
 
 
 class RegisterUserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+    sex = serializers.ChoiceField(choices=SexUserChoices.choices, required=False)
 
     class Meta:
         model = User
-        fields = ['email', 'password']  # , 'first_name', 'last_name']
+        fields = ['email', 'google_token', 'username', 'first_name', 'last_name', 'password', 'email_verified', 'sex',
+                  'profile_picture', 'address', 'prefix_phone', 'phone', 'birth_date', 'onboarding_completed']
+        extra_kwargs = {'password': {'write_only': True}}  # Para que la contraseña no se muestre en la respuesta
 
     def create(self, validated_data):
-        user = User.objects.create(
-            email=validated_data['email'],
-            password=validated_data['password'],
-            # first_name=validated_data.get('first_name', ''),
-            # last_name=validated_data.get('last_name', ''),
-        )
+        password = validated_data.pop('password', None)  # Extraer la contraseña antes de crear el usuario
+        user = User(**validated_data)
+        if password:
+            user.set_password(password)  # Hashea la contraseña antes de guardarla
+        user.save()
         return user
 
 

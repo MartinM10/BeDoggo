@@ -74,12 +74,13 @@ SPECTACULAR_SETTINGS = {
             'description': 'Añade tu token JWT en el formato: Bearer <tu_token>',
         },
     },
+    'POSTPROCESSING_HOOKS': []
 }
 
 # Configuración de Simple JWT (con Simple JWT los tokens no se almacenan en la bbdd)
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     # 'SIGNING_KEY': SECRET_KEY,  # Usa la clave secreta del proyecto

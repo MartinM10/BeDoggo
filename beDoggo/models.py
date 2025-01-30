@@ -24,6 +24,7 @@ class SexPetChoices(models.TextChoices):
 class User(AbstractUser):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     username = models.CharField(max_length=100, blank=True, null=True)
+    google_token = models.CharField(max_length=100, blank=True, null=True)
     profile_picture = models.URLField(null=True, blank=True)
     email = models.EmailField(unique=True)
     email_verified = models.BooleanField(default=False)

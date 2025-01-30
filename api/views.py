@@ -1,3 +1,4 @@
+import jwt
 from django.shortcuts import redirect
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token
@@ -35,32 +36,48 @@ class GoogleLoginView(APIView):
     def post(self, request):
         serializer = GoogleLoginSerializer(data=request.data)
         if serializer.is_valid():
-            token = serializer.validated_data.get('id_token')  # Ahora obtenemos el id_token
+            token = serializer.validated_data.get('id_token')
+
+            # Extraer el email del token sin verificarlo con Google
             try:
-                # Crear una solicitud de tipo 'requests' para pasarla al método de verificación de Google
+                payload = jwt.decode(token, options={"verify_signature": False})
+                email = payload.get("email")
+            except jwt.DecodeError:
+                return Response({"error": "Token inválido."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Verificar si el usuario ya existe con ese email y tiene un `google_token`
+            user = User.objects.filter(email=email, google_token__isnull=False).first()
+            if user:
+                # Si ya tiene un token almacenado, simplemente devolver los JWT
+                refresh = RefreshToken.for_user(user)
+                return Response({
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                    "user": UserSerializer(user).data,
+                })
+
+            # Si no tiene un `google_token`, verificar con Google y guardarlo
+            try:
                 google_request = GoogleRequest()
-
-                # Verificar el token con Google
-                # idinfo = id_token.verify_oauth2_token(token, google_request, settings.GOOGLE_CLIENT_ID)
                 idinfo = id_token.verify_oauth2_token(token, google_request)
-                # Obtener la información relevante del usuario
-                email = idinfo.get('email')
-                email_verified = idinfo.get('email_verified', False)
-                first_name = idinfo.get('given_name', '')
-                last_name = idinfo.get('family_name', '')
-                picture = idinfo.get('picture', '')  # Foto de perfil (opcional)
+                email_verified = idinfo.get("email_verified", False)
+                first_name = idinfo.get("given_name", "")
+                last_name = idinfo.get("family_name", "")
+                picture = idinfo.get("picture", "")
 
-                # Obtener o crear un nuevo usuario
-                user, created = User.objects.get_or_create(
+                # Crear o actualizar el usuario con su `google_token`
+                user, created = User.objects.update_or_create(
                     email=email,
-                    email_verified=email_verified,
                     defaults={
-                        "username": email.split('@')[0],  # Utilizamos el email como username por defecto
+                        "google_token": token,
+                        "email_verified": email_verified,
+                        "username": email.split('@')[0],
                         "first_name": first_name,
                         "last_name": last_name,
                         "profile_picture": picture,
                     },
                 )
+
                 # Generar tokens de acceso (JWT)
                 refresh = RefreshToken.for_user(user)
                 return Response({
@@ -70,6 +87,7 @@ class GoogleLoginView(APIView):
                 })
             except ValueError:
                 return Response({"error": "Token inválido o expirado."}, status=status.HTTP_400_BAD_REQUEST)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
