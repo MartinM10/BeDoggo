@@ -1,0 +1,314 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeDoggo - Cuida y rastrea a tu mascota</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+<header class="w-full py-4 px-4 sm:px-6 lg:px-8 bg-white shadow-sm">
+    <div class="container mx-auto flex justify-between items-center">
+        <a href="#" class="flex items-center space-x-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24"
+                 stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span class="text-2xl font-bold text-gray-900">BeDoggo</span>
+        </a>
+        <nav class="hidden md:flex space-x-4">
+            <a href="#features" class="text-gray-600 hover:text-gray-900">Características</a>
+            <a href="#how-it-works" class="text-gray-600 hover:text-gray-900">Cómo funciona</a>
+            <a href="#testimonials" class="text-gray-600 hover:text-gray-900">Testimonios</a>
+        </nav>
+        <button class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-300">
+            <a href="{% url 'dashboard' %}">
+                Iniciar sesión
+            </a>
+        </button>
+    </div>
+</header>
+
+<main class="flex-grow">
+    <section class="bg-gradient-to-r from-blue-50 to-green-50 py-20">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row items-center">
+                <div class="md:w-1/2 mb-10 md:mb-0">
+                    <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                        Mantén a tu mascota segura y saludable
+                    </h1>
+                    <p class="text-xl text-gray-600 mb-8">
+                        Rastreo GPS, historial médico unificado y comunidad de cuidado para tu mejor amigo.
+                    </p>
+                    <button class="bg-blue-600 text-white text-lg px-6 py-3 rounded-md hover:bg-blue-700 transition duration-300">
+                        <a href="{% url 'dashboard' %}">
+                            Comienza ahora
+                        </a>
+                    </button>
+                </div>
+                <div class="md:w-1/2">
+                    <img src="{% static 'images/image2_lading.jpg' %}" alt="Perro feliz" class="rounded-lg shadow-lg"
+                         width="600" height="400">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="features" class="py-20 bg-white">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center text-gray-900 mb-12">Características principales</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-blue-600 mb-4" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    <h3 class="text-xl font-semibold mb-2">Rastreo GPS en tiempo real</h3>
+                    <p class="text-gray-600">Localiza a tu mascota en cualquier momento y lugar con precisión.</p>
+                </div>
+                <div class="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-green-600 mb-4" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                    </svg>
+                    <h3 class="text-xl font-semibold mb-2">Compartir información</h3>
+                    <p class="text-gray-600">Comparte los datos de tu mascota con familiares, amigos y cuidadores.</p>
+                </div>
+                <div class="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-purple-600 mb-4" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <h3 class="text-xl font-semibold mb-2">Historial médico unificado</h3>
+                    <p class="text-gray-600">Mantén un registro médico completo y accesible para todos los
+                        veterinarios.</p>
+                </div>
+                <div class="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-yellow-600 mb-4" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                    </svg>
+                    <h3 class="text-xl font-semibold mb-2">Recomendaciones personalizadas</h3>
+                    <p class="text-gray-600">Descubre paseos, lugares y horarios populares para mascotas similares a la
+                        tuya.</p>
+                </div>
+                <div class="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-yellow-600 mb-4" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 2c3 2 6 2 6 2v4c0 4-2 7-6 10-4-3-6-6-6-10V4s3 0 6-2z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 10h6M9 14h6M12 6v8"/>
+                    </svg>
+
+                    <h3 class="text-xl font-semibold mb-2">Lleva la Documentación siempre contigo</h3>
+                    <p class="text-gray-600">LLeva contigo la información de tu mascota siempre actualizada para
+                        identificarla</p>
+                </div>
+                <div class="flex flex-col items-center text-center p-6 bg-white rounded-lg shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-yellow-600 mb-4" viewBox="0 0 24 24"
+                         fill="none" stroke="currentColor">
+                        <circle cx="12" cy="12" r="3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                              d="M4.93 4.93a9 9 0 0112.72 0M19.07 19.07a9 9 0 00-12.72 0M2 12h2m16 0h2M12 2v2m0 16v2"/>
+                    </svg>
+
+                    <h3 class="text-xl font-semibold mb-2">Rescates de mascotas perdidas</h3>
+                    <p class="text-gray-600">Ayuda a otras personas a encontrar a su mascota perdida en caso de que
+                        aparezca en tu zona y permite que otros puedan ayudarte en caso de perder a tu mascota</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="how-it-works" class="py-20 bg-gray-50">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center text-gray-900 mb-12">Cómo funciona</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <ol class="space-y-6">
+                        <li class="flex items-center space-x-4">
+                            <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-600 text-white font-bold">
+                                1
+                            </div>
+                            <p class="text-lg text-gray-700">Configura el perfil de tu mascota con información
+                                detallada.</p>
+                        </li>
+                        <li class="flex items-center space-x-4">
+                            <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-600 text-white font-bold">
+                                2
+                            </div>
+                            <p class="text-lg text-gray-700">Recibe recomendaciones personalizadas basadas en tu
+                                mascota.</p>
+                        </li>
+                        <li class="flex items-center space-x-4">
+                            <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-600 text-white font-bold">
+                                3
+                            </div>
+                            <p class="text-lg text-gray-700">Conecta con la comunidad y accede a expertos
+                                veterinarios.</p>
+                        </li>
+                        <li class="flex items-center space-x-4">
+                            <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-blue-600 text-white font-bold">
+                                4
+                            </div>
+                            <p class="text-lg text-gray-700">Disfruta de información actualizada y servicios
+                                personalizados.</p>
+                        </li>
+                    </ol>
+                </div>
+                <div class="mt-10 md:mt-0">
+                    <img src="{% static 'images/image4_lading.jpg' %}" alt="Aplicación BeDoggo en uso"
+                         class="rounded-lg shadow-lg" width="600" height="400">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-20 bg-gray-50">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center text-gray-900 mb-12">Comunidad y Expertos a tu Servicio</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-blue-600 mb-4" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                    <h3 class="text-xl font-semibold mb-2">Comunidad de Apoyo</h3>
+                    <p class="text-gray-600">Conecta con otros dueños de mascotas, comparte experiencias y obtén
+                        consejos valiosos.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-green-600 mb-4" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                    </svg>
+                    <h3 class="text-xl font-semibold mb-2">Veterinarios de Calidad</h3>
+                    <p class="text-gray-600">Accede a una red de veterinarios expertos para el mejor cuidado de tu
+                        mascota.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-purple-600 mb-4" fill="none"
+                         viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                    <h3 class="text-xl font-semibold mb-2">Información Actualizada</h3>
+                    <p class="text-gray-600">Disfruta de contenido verificado y segmentado según las necesidades de tu
+                        mascota.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="testimonials" class="py-20 bg-white">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-center text-gray-900 mb-12">Lo que dicen nuestros usuarios</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <p class="text-gray-600 italic mb-4">"Gracias a BeDoggo, pude encontrar a mi perro en cuestión de
+                        minutos cuando se escapó. ¡Es una tranquilidad increíble!"</p>
+                    <p class="font-semibold text-right">- María G.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <p class="text-gray-600 italic mb-4">"Como veterinario, puedo acceder al historial completo de mis
+                        pacientes. Ha mejorado significativamente la calidad de atención que puedo ofrecer."</p>
+                    <p class="font-semibold text-right">- Dr. Carlos R.</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <p class="text-gray-600 italic mb-4">"Compartir la información de nuestra gata con la cuidadora es
+                        muy fácil. Nos vamos de vacaciones con total tranquilidad."</p>
+                    <p class="font-semibold text-right">- Ana y Juan P.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-20 bg-blue-600">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl font-bold text-white mb-4">Protege a tu mascota hoy mismo</h2>
+            <p class="text-xl text-blue-100 mb-8">
+                Únete a la comunidad BeDoggo y dale a tu mascota el cuidado que merece.
+            </p>
+            <button class="bg-white text-blue-600 text-lg px-6 py-3 rounded-md hover:bg-blue-50 transition duration-300">
+                Comienza tu prueba gratuita
+            </button>
+        </div>
+    </section>
+</main>
+
+<footer class="bg-gray-900 text-white py-12">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center">
+            Derechos de autor © 2025 Bedoogo
+        </div>
+        <br>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div>
+                <h3 class="text-lg font-semibold mb-4">BeDoggo</h3>
+                <p class="text-gray-400">Cuidando a tus mascotas con tecnología e innovación.</p>
+            </div>
+            <div>
+                <h4 class="text-lg font-semibold mb-4">Enlaces rápidos</h4>
+                <ul class="space-y-2">
+                    <li><a href="#" class="text-gray-400 hover:text-white">Inicio</a></li>
+                    <li><a href="#features" class="text-gray-400 hover:text-white">Características</a></li>
+                    <li><a href="#how-it-works" class="text-gray-400 hover:text-white">Cómo funciona</a></li>
+                    <li><a href="#testimonials" class="text-gray-400 hover:text-white">Testimonios</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-lg font-semibold mb-4">Soporte</h4>
+                <ul class="space-y-2">
+                    <li><a href="#" class="text-gray-400 hover:text-white">FAQ</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white">Contacto</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white">Política de privacidad</a></li>
+                    <li><a href="#" class="text-gray-400 hover:text-white">Términos de servicio</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-lg font-semibold mb-4">Síguenos</h4>
+                <div class="flex space-x-4">
+                    <a href="#" class="text-gray-400 hover:text-white">
+                        <span class="sr-only">Facebook</span>
+                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill-rule="evenodd"
+                                  d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white">
+                        <span class="sr-only">Instagram</span>
+                        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill-rule="evenodd"
+                                  d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045"
+                                  clip-rule="evenodd"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</footer>
+</body>
+</html>
+

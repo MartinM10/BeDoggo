@@ -9,8 +9,8 @@ from beDoggo.views import index_view, lost_pets_map_view, lost_pets_data_view, s
 urlpatterns = [
                   path('admin/', admin.site.urls),
                   path('api/', include('api.urls')),
-                  # path('', index_view, name='index'),
-                  path('', dashboard_view, name='index'),
+                  path('', index_view, name='index'),
+                  path('dashboard', dashboard_view, name='dashboard'),
                   path('accounts/', include('beDoggo.urls')),
                   path('add-pet/', add_pet_view, name='add-pet'),
                   path('edit-pet/<uuid:pet_uuid>/', edit_pet_view, name='edit-pet'),
@@ -23,7 +23,6 @@ urlpatterns = [
                   path('veterinarians/view_medical_records/<uuid:pet_uuid>/', view_medical_records,
                        name='view-medical-records'),
                   path('register-veterinarian/', register_veterinarian_view, name='register-veterinarian'),
-                  path('dashboard/', dashboard_view, name='dashboard'),
 
               ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 

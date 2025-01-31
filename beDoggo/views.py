@@ -2,7 +2,7 @@ from rest_framework import status, generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
-from .models import Pet, Location, User
+from .models import Pet, User
 from .serializers import UserSerializer, RegisterSerializer
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import login, authenticate
@@ -189,12 +189,7 @@ def dashboard_view(request):
 
 
 def index_view(request):
-    if request.user.is_authenticated:
-        pets = Pet.objects.filter(owner=request.user)
-        form = PetForm()
-        return render(request, 'dashboard.html', {'user': request.user, 'pets': pets, 'form': form})
-    else:
-        return render(request, 'index.html')
+    return render(request, 'landing_page.html')
 
 
 def lost_pets_map_view(request):
