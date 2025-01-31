@@ -45,8 +45,8 @@ class GoogleLoginView(APIView):
             except jwt.DecodeError:
                 return Response({"error": "Token inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Verificar si el usuario ya existe con ese email y tiene un `google_token`
-            user = User.objects.filter(email=email, google_token__isnull=False).first()
+            # Verificar si el usuario ya existe con ese email
+            user = User.objects.filter(email=email).first()
             if user:
                 # Si ya tiene un token almacenado, simplemente devolver los JWT
                 refresh = RefreshToken.for_user(user)
@@ -56,20 +56,19 @@ class GoogleLoginView(APIView):
                     "user": UserSerializer(user).data,
                 })
 
-            # Si no tiene un `google_token`, verificar con Google y guardarlo
+            # Si no tiene un email, verificar con Google y guardarlo
             try:
                 google_request = GoogleRequest()
                 idinfo = id_token.verify_oauth2_token(token, google_request)
-                email_verified = idinfo.get("email_verified", False)
+                email_verified = idinfo.get("email_verified", True)
                 first_name = idinfo.get("given_name", "")
                 last_name = idinfo.get("family_name", "")
                 picture = idinfo.get("picture", "")
 
-                # Crear o actualizar el usuario con su `google_token`
+                # Crear o actualizar el usuario con su `email`
                 user, created = User.objects.update_or_create(
                     email=email,
                     defaults={
-                        "google_token": token,
                         "email_verified": email_verified,
                         "username": email.split('@')[0],
                         "first_name": first_name,

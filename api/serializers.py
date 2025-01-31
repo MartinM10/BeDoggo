@@ -6,7 +6,9 @@ from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veter
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['uuid', 'email', 'first_name', 'last_name', 'phone', 'sex']
+        fields = ['uuid', 'email', 'username', 'first_name', 'last_name', 'birth_date', 'sex', 'phone',
+                  'email_verified', 'address', 'prefix_phone', 'acquisition_channel', 'points', 'onboarding_completed',
+                  'next_payment_date']
 
 
 class GPSDeviceSerializer(serializers.ModelSerializer):
@@ -25,7 +27,7 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'google_token', 'username', 'first_name', 'last_name', 'password', 'email_verified', 'sex',
+        fields = ['email', 'username', 'first_name', 'last_name', 'password', 'email_verified', 'sex',
                   'profile_picture', 'address', 'prefix_phone', 'phone', 'birth_date', 'onboarding_completed']
         extra_kwargs = {'password': {'write_only': True}}  # Para que la contraseña no se muestre en la respuesta
 
@@ -114,7 +116,7 @@ class MedicalRecordSerializer(serializers.ModelSerializer):
 
 class GoogleLoginSerializer(serializers.Serializer):
     # El token de ID recibido de Google (obligatorio para validar la identidad)
-    id_token = serializers.CharField(required=True, write_only=True)
+    id_token = serializers.CharField(max_length=5000, required=True, write_only=True)
 
     # Otros datos que se pueden enviar (aunque no son estrictamente necesarios para la autenticación)
     # email = serializers.EmailField(required=False)
