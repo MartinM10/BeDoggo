@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}
+    Historial Médico de {{ pet.name }}
+{% endblock %}
+{% block content %}
+    <h2 class="text-center my-4">Historial Médico de {{ pet.name }}</h2>
+
+    {% if medical_records %}
+        <div class="list-group">
+            {% for record in medical_records %}
+                <div class="list-group-item mb-3 border rounded">
+                    <h5 class="mb-2 text-primary">{{ record.date|date:"d/m/Y H:i" }} - {{ record.visit_reason }}</h5>
+
+                    <!-- Detalles del registro médico -->
+                    <div class="mb-3">
+                        <strong>Motivo de la consulta:</strong>
+                        <p>{{ record.visit_reason|default:"No disponible" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Observaciones:</strong>
+                        <p>{{ record.observations|default:"No disponible" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Diagnóstico:</strong>
+                        <p>{{ record.diagnosis|default:"No disponible" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Tratamiento:</strong>
+                        <p>{{ record.treatment|default:"No disponible" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Medicación:</strong>
+                        <p>{{ record.medication|default:"No disponible" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Vacunas:</strong>
+                        <p>{{ record.vaccines|default:"No disponible" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Alergias:</strong>
+                        <p>{{ record.allergies|default:"No disponible" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Resultados de pruebas:</strong>
+                        <p>{{ record.test_results|default:"No disponible" }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Próxima visita:</strong>
+                        <p>{{ record.next_visit|date:"d/m/Y"|default:"No disponible" }}</p>
+                    </div>
+
+                    <!-- Mostrar imagen si existe -->
+                    {% if record.images %}
+                        <div class="mb-3">
+                            <strong>Imagen:</strong><br>
+                            <img src="{{ record.images }}" alt="Imagen Médica" class="img-fluid rounded" width="200">
+                        </div>
+                    {% endif %}
+
+                    <!-- Mostrar archivo adjunto si existe -->
+                    {% if record.attachments %}
+                        <div class="mb-3">
+                            <strong>Adjunto:</strong>
+                            <a href="{{ record.attachments }}" target="_blank" class="btn btn-info btn-sm">
+                                Ver Adjunto
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-center">No hay registros médicos disponibles para esta mascota.</p>
+    {% endif %}
+{% endblock %}

@@ -17,7 +17,7 @@ from django.db.models import Q
 
 
 def is_veterinarian(user):
-    return user.is_authenticated and user.is_veterinarian
+    return user.is_authenticated and hasattr(user, 'veterinarian_profile')
 
 
 @user_passes_test(is_veterinarian)
@@ -36,8 +36,8 @@ def search_pet_view(request):
 
 @login_required
 @user_passes_test(is_veterinarian)
-def add_medical_record_view(request, pet_id):
-    pet = get_object_or_404(Pet, id=pet_id)
+def add_medical_record_view(request, pet_uuid):
+    pet = get_object_or_404(Pet, uuid=pet_uuid)
     if request.method == "POST":
         form = MedicalRecordForm(request.POST, request.FILES)
         if form.is_valid():
@@ -45,10 +45,20 @@ def add_medical_record_view(request, pet_id):
             medical_record.pet = pet
             medical_record.veterinarian = request.user.veterinarian_profile
             medical_record.save()
-            return redirect('pet-detail', pk=pet.id)
+            return redirect('search-pet')
     else:
         form = MedicalRecordForm()
     return render(request, 'veterinarians/add_medical_record.html', {'form': form, 'pet': pet})
+
+
+@login_required
+@user_passes_test(is_veterinarian)
+def view_medical_records(request, pet_uuid):
+    pet = get_object_or_404(Pet, uuid=pet_uuid)
+    medical_records = pet.medical_records.all().order_by('-date')
+
+    return render(request, 'veterinarians/view_medical_records.html',
+                  {'pet': pet, 'medical_records': medical_records})
 
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
@@ -105,7 +115,6 @@ def login_view(request):
 @login_required
 def profile_view(request):
     profile = get_object_or_404(User, id=request.user.id)
-    print(profile)
     if request.method == 'POST':
         form = ProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
@@ -129,19 +138,22 @@ def add_pet_view(request):
 
 
 @login_required
-def edit_pet_view(request, pet_id):
-    pet = get_object_or_404(Pet, id=pet_id)
-    # pet = get_object_or_404(Pet, id=pet_id, owner=request.user)
+def edit_pet_view(request, pet_uuid):
+    pet = get_object_or_404(Pet, uuid=pet_uuid)
 
     # Asegurarse de que el usuario sea el dueño de la mascota o un veterinario
-    if request.user != pet.owner and not request.user.is_veterinarian:
+    if request.user != pet.owner and not is_veterinarian(request.user):
         return redirect('dashboard')  # Redirige si no tiene permiso
 
     if request.method == 'POST':
         form = PetForm(request.POST, request.FILES, instance=pet)
         if form.is_valid():
             form.save()
-            return redirect('dashboard')  # O redirige a otra página, como el perfil de la mascota
+            # Redirige dependiendo del rol
+            if request.user == pet.owner:
+                return redirect('dashboard')  # Página para dueños de mascotas
+            elif is_veterinarian(request.user):
+                return redirect('dashboard')  # Página para veterinarios
     else:
         form = PetForm(instance=pet)
 
@@ -149,8 +161,8 @@ def edit_pet_view(request, pet_id):
 
 
 @login_required
-def delete_pet_view(request, pet_id):
-    pet = get_object_or_404(Pet, id=pet_id, owner=request.user)
+def delete_pet_view(request, pet_uuid):
+    pet = get_object_or_404(Pet, uuid=pet_uuid, owner=request.user)
     if request.method == 'POST':
         pet.delete()
         return redirect('dashboard')
@@ -168,11 +180,11 @@ def dashboard_view(request):
 @login_required
 def dashboard_view(request):
     pets = Pet.objects.filter(owner=request.user)
-    is_veterinarian = request.user.is_veterinarian  # Verificar si el usuario es veterinario
+    # user_is_veterinarian = True if request.user.veterinarian_profile else None
     return render(request, 'dashboard.html', {
         'user': request.user,
         'pets': pets,
-        'is_veterinarian': is_veterinarian  # Pasar esta información al template
+        'is_veterinarian': is_veterinarian(user=request.user)  # Pasar esta información al template
     })
 
 

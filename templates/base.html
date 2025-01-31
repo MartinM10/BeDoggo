@@ -22,7 +22,7 @@
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'index' %}"><i class="fas fa-home"></i> Home</a>
+                    <a class="nav-link" href="{% url 'dashboard' %}"><i class="fas fa-home"></i> Home</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'api-home' %}"><i class="fas fa-bookmark"></i> API</a>
@@ -33,9 +33,17 @@
                     </a>
                 </li>
                 {% if user.is_authenticated %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{% url 'dashboard' %}"><i class="fas fa-dog"></i> Mis mascotas</a>
-                    </li>
+                    {% if user.veterinarian_profile %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'search-pet' %}">
+                                <i class="fas fa-dog"></i> Buscar mascotas
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'dashboard' %}"><i class="fas fa-dog"></i> Mis mascotas</a>
+                        </li>
+                    {% endif %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'user-profile' %}"><i class="fas fa-user"></i> Perfil</a>
                     </li>

@@ -49,9 +49,14 @@ class User(AbstractUser):
     onboarding_completed = models.BooleanField(default=False)
     next_payment_date = models.DateTimeField(blank=True, null=True)
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = ['username']
 
     # REQUIRED_FIELDS = ['first_name', 'last_name']
+    def save(self, *args, **kwargs):
+        if not self.username:
+            self.username = self.email.split('@')[0]  # 🔹 Genera username basado en el email
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.username if self.username else self.first_name} ({self.email})"
 
@@ -117,7 +122,7 @@ class Pet(models.Model):
                                      related_name='pets')
     shared_with = models.ManyToManyField(User, related_name='shared_pets', blank=True)
 
-    image = models.ImageField(upload_to='pets/images/', blank=True, null=True)
+    image = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -140,8 +145,8 @@ class MedicalRecord(models.Model):
     test_results = models.TextField(blank=True, null=True)
     observations = models.TextField(blank=True, null=True)
     next_visit = models.DateField(blank=True, null=True)
-    attachments = models.FileField(upload_to='medical_records/attachments/', blank=True, null=True)
-    images = models.ImageField(upload_to='medical_records/images/', blank=True, null=True)
+    attachments = models.URLField(blank=True, null=True)
+    images = models.URLField(blank=True, null=True)
 
     def __str__(self):
         return f"Medical Record for {self.pet.name} on {self.date}"
