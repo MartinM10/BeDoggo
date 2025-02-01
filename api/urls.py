@@ -4,10 +4,9 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from .views import (
     api_home, GoogleLoginView, RegisterUserView,
     PetListCreateView, PetDetailView, PetAccessCodeView, AccessCodeValidationView,
-    LostPetsNearbyView, LocationListCreateView, LocationDetailView,
-    VeterinarianListCreateView, VeterinarianDetailView,
+    LostPetsNearbyView, LocationListCreateView, VeterinarianListCreateView, VeterinarianDetailView,
     MedicalRecordListCreateView, MedicalRecordDetailView, PetSearchView, SharedPetsView, OnboardingView,
-    GPSDeviceListCreateView, GPSDeviceDetailView, AssociateGPSDeviceView
+    GPSDeviceListCreateView, GPSDeviceDetailView, AssociateGPSDeviceView, UserProfileView
 )
 
 urlpatterns = [
@@ -21,6 +20,7 @@ urlpatterns = [
     # Usuarios y autenticación
     path('auth/google/', GoogleLoginView.as_view(), name='google-login'),
     path('auth/register/', RegisterUserView.as_view(), name='register'),
+    path("me/", UserProfileView.as_view(), name="user-profile"),
     path('onboarding/', OnboardingView.as_view(), name='onboarding'),
 
     # Mascotas
