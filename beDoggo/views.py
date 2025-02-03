@@ -214,7 +214,7 @@ def lost_pets_data_view(request):
         {
             'name': pet.name,
             'breed': pet.breed,
-            'age': pet.age,
+            'birth_date': pet.birth_date,
             'latitude': pet.locations.first().location.y,
             'longitude': pet.locations.first().location.x,
             'owner_name': f"{pet.owner.first_name} {pet.owner.last_name}",

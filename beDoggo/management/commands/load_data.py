@@ -82,7 +82,7 @@ class Command(BaseCommand):
                         sex=random.choice([choice[0] for choice in SexPetChoices.choices]),
                         breed=fake.word().capitalize(),
                         color=fake.color_name(),
-                        age=random.randint(1, 15),
+                        birth_date=fake.date_of_birth(minimum_age=0, maximum_age=20),
                         weight=round(random.uniform(1.0, 50.0), 2),
                         chip_number=fake.unique.bothify(text='??##??##'),
                         observations=fake.text(max_nb_chars=200),

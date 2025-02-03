@@ -16,7 +16,7 @@ from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veter
 from .serializers import UserSerializer, PetSerializer, LostPetSerializer, \
     GoogleLoginSerializer, RegisterUserSerializer, AccessCodeSerializer, LocationSerializer, MedicalRecordSerializer, \
     VeterinarianSerializer, GPSDeviceSerializer, AssociateGPSDeviceSerializer, AccessCodeRequestSerializer, \
-    PetSerializerWithShared
+    PetSerializerWithShared, OnboardingPetSerializer
 from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D  # Distancia
 from django.contrib.gis.db.models.functions import Distance
@@ -130,13 +130,13 @@ class RegisterUserView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class UserProfileView(APIView):
+class UserProfileView(generics.RetrieveAPIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = UserSerializer
 
-    def get(self, request):
-        user = request.user
-        return Response(UserSerializer(user).data)
+    def get_object(self):
+        return self.request.user
 
 
 class OnboardingView(APIView):
@@ -146,29 +146,31 @@ class OnboardingView(APIView):
         summary="Completar onboarding y registrar mascota",
         description="Permite a los usuarios completar el proceso de onboarding y registrar una mascota. "
                     "Si se proporciona un `gps_device`, se asociará con la mascota.",
-        request=PetSerializer,
+        request=OnboardingPetSerializer,
         responses={201: PetSerializer, 400: {"error": "Errores de validación."}}
     )
     def post(self, request):
         user = request.user  # Usuario autenticado
+        serializer = OnboardingPetSerializer(data=request.data)
 
-        # Procesar datos de la mascota
-        pet_data = request.data.copy()
-
-        # Si el usuario proporciona un GPSDevice, se asocia
-        gps_device_code = pet_data.get("gps_device_code")
-        if gps_device_code:
-            try:
-                gps_device, created = GPSDevice.objects.get_or_create(code=gps_device_code)
-                pet_data['gps_device_code'] = gps_device.code
-            except GPSDevice.DoesNotExist:
-                return Response({"error": "El dispositivo GPS proporcionado no existe."},
-                                status=status.HTTP_400_BAD_REQUEST)
-
-        # Serializar y guardar la mascota con el dueño asignado manualmente
-        serializer = PetSerializer(data=pet_data)
         if serializer.is_valid():
-            pet = serializer.save(owner=user)  # 🔹 Aquí se asigna el dueño correctamente
+            user.username = serializer.validated_data.get('owner', {}).get('username', user.username)
+            user.first_name = serializer.validated_data.get('owner', {}).get('first_name', user.first_name)
+            user.last_name = serializer.validated_data.get('owner', {}).get('last_name', user.last_name)
+            user.birth_date = serializer.validated_data.get('owner', {}).get('birth_date', user.birth_date)
+            user.sex = serializer.validated_data.get('owner', {}).get('sex', user.sex)
+            user.accepts_newsletter = serializer.validated_data.get('owner', {}).get('accepts_newsletter',
+                                                                                     user.accepts_newsletter)
+            user.save()
+
+            pet_data = serializer.validated_data
+            gps_device_code = pet_data.get("gps_device_code")
+
+            if gps_device_code:
+                gps_device, created = GPSDevice.objects.get_or_create(code=gps_device_code)
+                pet_data['gps_device'] = gps_device
+
+            pet = Pet.objects.create(owner=user, **pet_data)
             return Response(PetSerializer(pet).data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

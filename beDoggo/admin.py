@@ -32,7 +32,8 @@ class UserAdmin(BaseUserAdmin):  # Hereda de BaseUserAdmin
         (None, {
             'classes': ('wide',),
             'fields': (
-            'email', 'password1', 'password2', 'is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+                'email', 'password1', 'password2', 'is_active', 'is_staff', 'is_superuser', 'groups',
+                'user_permissions'),
         }),
     )
     list_display = ('email', 'username', 'first_name', 'last_name', 'is_active', 'is_staff')
@@ -66,7 +67,7 @@ admin.site.register(GPSDevice, GPSDeviceAdmin)
 
 # Administrador de Mascotas
 class PetAdmin(admin.ModelAdmin):
-    list_display = ('name', 'owner', 'sex', 'age', 'weight', 'is_lost', 'gps_device')
+    list_display = ('name', 'owner', 'sex', 'birth_date', 'weight', 'is_lost', 'gps_device')
     search_fields = ('name', 'owner__email', 'chip_number')
     list_filter = ('sex', 'is_lost')
     ordering = ('name',)

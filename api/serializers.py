@@ -8,7 +8,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['uuid', 'email', 'username', 'first_name', 'last_name', 'birth_date', 'sex', 'phone',
                   'email_verified', 'address', 'prefix_phone', 'acquisition_channel', 'points', 'onboarding_completed',
-                  'next_payment_date']
+                  'next_payment_date', 'accept_newsletter']
 
 
 class GPSDeviceSerializer(serializers.ModelSerializer):
@@ -83,6 +83,25 @@ class PetSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+class OnboardingPetSerializer(serializers.ModelSerializer):
+    gps_device_code = serializers.CharField(required=False, write_only=True)
+    username = serializers.CharField(source='owner.username', required=False)
+    first_name = serializers.CharField(source='owner.first_name', required=False)
+    last_name = serializers.CharField(source='owner.last_name', required=False)
+    birth_date = serializers.DateField(source='owner.birth_date', required=False)
+    sex = serializers.ChoiceField(source='owner.sex', choices=SexUserChoices.choices, required=False)
+    accept_newsletter = serializers.BooleanField(source='owner.accepts_newsletter', required=False)
+
+    class Meta:
+        model = Pet
+        fields = [
+            'gps_device_code', 'name', 'sex', 'breed', 'color', 'birth_date', 'weight',
+            'chip_number', 'chip_position', 'observations', 'sterilized', 'is_lost',
+            'phone_emergency', 'image', 'shared_with',
+            'username', 'first_name', 'last_name', 'birth_date', 'sex', 'accept_newsletter'
+        ]
+
+
 class PetSerializerWithShared(serializers.ModelSerializer):
     shared_with = serializers.SerializerMethodField()
 
@@ -90,6 +109,7 @@ class PetSerializerWithShared(serializers.ModelSerializer):
         model = Pet
         fields = '__all__'
 
+    @extend_schema_field(serializers.ListField(child=serializers.DictField()))
     def get_shared_with(self, obj):
         return [{"uuid": user.uuid, "email": user.email} for user in obj.shared_with.all()]
 
@@ -148,8 +168,8 @@ class LostPetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Pet
-        fields = ['name', 'sex', 'breed', 'color', 'age', 'weight', 'sterilized', 'observations', 'phone_emergency',
-                  'owner', 'veterinarian', 'latitude', 'longitude']
+        fields = ['name', 'sex', 'breed', 'color', 'birth_date', 'weight', 'sterilized', 'observations',
+                  'phone_emergency', 'owner', 'veterinarian', 'latitude', 'longitude']
 
     @extend_schema_field(UserSerializer)  # 🔹 Especifica que devuelve un usuario serializado
     def get_owner(self, obj):

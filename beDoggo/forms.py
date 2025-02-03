@@ -1,6 +1,8 @@
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import get_user_model
 from django import forms
+from django.utils.timezone import now
+
 from beDoggo.models import Pet, MedicalRecord, Veterinarian, User
 
 
@@ -62,18 +64,18 @@ class VeterinarianRegistrationForm(UserCreationForm):
 class PetForm(forms.ModelForm):
     class Meta:
         model = Pet
-        fields = ['name', 'breed', 'age', 'observations', 'is_lost', 'image']
+        fields = ['name', 'breed', 'birth_date', 'observations', 'is_lost', 'image']
 
     def __init__(self, *args, **kwargs):
         super(PetForm, self).__init__(*args, **kwargs)
         if self.instance and self.instance.image:
             self.fields['image'].widget.attrs['data-current-image'] = self.instance.image.url
 
-    def clean_age(self):
-        age = self.cleaned_data.get('age')
-        if age < 0:
-            raise forms.ValidationError("Age cannot be negative.")
-        return age
+    def clean_birth_date(self):
+        birth_date = self.cleaned_data.get('birth_date')
+        if birth_date > now:
+            raise forms.ValidationError("Error. Birth date > now.")
+        return birth_date
 
 
 class MedicalRecordForm(forms.ModelForm):

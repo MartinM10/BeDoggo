@@ -42,7 +42,7 @@
                                     <h5 class="card-title">{{ pet.name }}</h5>
                                     <p class="card-text">
                                         <strong>Raza:</strong> {{ pet.breed|default:"N/A" }}<br>
-                                        <strong>Edad:</strong> {{ pet.age }} años<br>
+                                        <strong>Edad:</strong> {{ pet.birth_date }} años<br>
                                         <strong>Peso:</strong> {{ pet.weight|default:"N/A" }} kg<br>
                                         <strong>Chip:</strong> {{ pet.chip_number|default:"N/A" }}
                                     </p>

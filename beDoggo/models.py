@@ -15,6 +15,7 @@ class SexUserChoices(models.TextChoices):
     MALE = 'Male', _('Hombre')
     FEMALE = 'Female', _('Mujer')
     OTHER = 'Other', _('Otros')
+    PREFER_NOT_TO_ANSWER = 'PreferNotAnswer', _('Prefiero no responder')
 
 
 class SexPetChoices(models.TextChoices):
@@ -32,7 +33,7 @@ class User(AbstractUser):
     address = models.TextField(blank=True, null=True)
     prefix_phone = models.CharField(max_length=20, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
-    sex = models.CharField(max_length=10, choices=SexUserChoices.choices, blank=True, null=True)
+    sex = models.CharField(max_length=20, choices=SexUserChoices.choices, blank=True, null=True)
 
     class AcquisitionChannelChoices(models.TextChoices):
         ADVERTISEMENT = 'Advertisement', _('Publicidad')
@@ -49,6 +50,7 @@ class User(AbstractUser):
     points = models.PositiveIntegerField(default=0)
     onboarding_completed = models.BooleanField(default=False)
     next_payment_date = models.DateTimeField(blank=True, null=True)
+    accept_newsletter = models.BooleanField(default=False)
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
 
@@ -108,9 +110,10 @@ class Pet(models.Model):
     sex = models.CharField(max_length=10, choices=SexPetChoices.choices, blank=True, null=True)
     breed = models.CharField(max_length=100, blank=True, null=True)
     color = models.CharField(max_length=100, blank=True, null=True)
-    age = models.PositiveIntegerField()  # CAMBIAR POR FECHA DE NACIMIENTO DE LA MASCOTA
+    birth_date = models.DateField(blank=True, null=True)
     weight = models.FloatField(null=True, blank=True)
     chip_number = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    chip_position = models.CharField(max_length=100, null=True, blank=True)
     observations = models.TextField(blank=True, null=True)
     sterilized = models.BooleanField(default=False)
     is_lost = models.BooleanField(default=False)
