@@ -53,7 +53,8 @@ class Command(BaseCommand):
         with transaction.atomic():
             for i in range(1, total_users + 1):
                 # Crear usuario
-                email = fake.unique.email()
+                # email = fake.unique.email()
+                email = 'user' + str(i) + '@example.com'
                 user = User.objects.create(
                     email=email,
                     first_name=fake.first_name(),
