@@ -68,6 +68,8 @@ class Command(BaseCommand):
                     birth_date=fake.date_of_birth(minimum_age=18, maximum_age=80),
                     onboarding_completed=random.choice([True, False])
                 )
+                user.set_password('password123')
+                user.save()
                 created_users += 1
 
                 # Para cada usuario, creamos entre 1 y max_pets mascotas
