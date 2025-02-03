@@ -83,6 +83,17 @@ class PetSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
+class PetSerializerWithShared(serializers.ModelSerializer):
+    shared_with = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Pet
+        fields = '__all__'
+
+    def get_shared_with(self, obj):
+        return [{"uuid": user.uuid, "email": user.email} for user in obj.shared_with.all()]
+
+
 class LocationSerializer(serializers.ModelSerializer):
     latitude = serializers.FloatField(source='location.y', required=True)  # Para `POST`
     longitude = serializers.FloatField(source='location.x', required=True)  # Para `POST`
@@ -100,12 +111,18 @@ class LocationSerializer(serializers.ModelSerializer):
         }
 
 
+class AccessCodeRequestSerializer(serializers.Serializer):
+    code = serializers.CharField()
+
+
 class AccessCodeSerializer(serializers.ModelSerializer):
     pet_name = serializers.CharField(source='pet.name', read_only=True)
+    created_by_email = serializers.EmailField(source='created_by.email', read_only=True)
 
     class Meta:
         model = AccessCode
-        fields = ['uuid', 'code', 'pet', 'pet_name', 'is_used', 'expires_at']
+        fields = ['uuid', 'code', 'pet', 'pet_name', 'is_used', 'expires_at', 'created_at', 'created_by_email']
+        read_only_fields = ['uuid', 'code', 'created_at', 'is_used', 'created_by_email']
 
 
 class MedicalRecordSerializer(serializers.ModelSerializer):

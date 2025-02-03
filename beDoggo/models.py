@@ -2,6 +2,8 @@ import hashlib
 import random
 import string
 import uuid
+from datetime import timedelta
+
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.utils.timezone import now
@@ -181,6 +183,9 @@ class AccessCode(models.Model):
         if not self.code:
             unique_data = f"{self.pet.uuid}{self.created_by.uuid}{uuid.uuid4()}"
             self.code = hashlib.sha256(unique_data.encode()).hexdigest()
+        # Establecer expiración por defecto a 1 semana
+        if not self.expires_at:
+            self.expires_at = now() + timedelta(days=7)
         super().save(*args, **kwargs)
 
     @staticmethod

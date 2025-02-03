@@ -1,8 +1,12 @@
 import jwt
+from django.db.models import Q
 from django.shortcuts import redirect
+from django.utils.timezone import now
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.generics import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
@@ -11,7 +15,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veterinarian, GPSDevice
 from .serializers import UserSerializer, PetSerializer, LostPetSerializer, \
     GoogleLoginSerializer, RegisterUserSerializer, AccessCodeSerializer, LocationSerializer, MedicalRecordSerializer, \
-    VeterinarianSerializer, GPSDeviceSerializer, AssociateGPSDeviceSerializer
+    VeterinarianSerializer, GPSDeviceSerializer, AssociateGPSDeviceSerializer, AccessCodeRequestSerializer, \
+    PetSerializerWithShared
 from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D  # Distancia
 from django.contrib.gis.db.models.functions import Distance
@@ -188,26 +193,99 @@ class PetListCreateView(generics.ListCreateAPIView):
 class PetDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = PetSerializer
     permission_classes = [IsAuthenticated]
-    lookup_field = 'uuid'  # Se usará 'uuid' en lugar del ID por defecto
+    lookup_field = 'uuid'
 
     @extend_schema(summary="Detalles de una mascota")
     def get_queryset(self):
-        return Pet.objects.filter(owner=self.request.user)
+        # Permitir acceso a dueños y usuarios compartidos
+        return Pet.objects.filter(
+            Q(owner=self.request.user) |
+            Q(shared_with=self.request.user) |
+            Q(veterinarian=self.request)
+        ).distinct()
+
+    def update(self, request, *args, **kwargs):
+        # Restringir edición solo al dueño
+        if self.get_object().owner != request.user:
+            return Response(
+                {"detail": "No tienes permiso para editar esta mascota."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        # Restringir eliminación solo al dueño
+        if self.get_object().owner != request.user:
+            return Response(
+                {"detail": "No tienes permiso para eliminar esta mascota."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        return super().destroy(request, *args, **kwargs)
 
 
 class PetAccessCodeView(generics.CreateAPIView):
     serializer_class = AccessCodeSerializer
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(
-        summary="Generar código de acceso para compartir una mascota",
-        responses={201: AccessCodeSerializer},
-    )
-    def post(self, request, pet_id):
-        pet = Pet.objects.get(uuid=pet_id, owner=request.user)
-        access_code = AccessCode.objects.create(pet=pet, created_by=request.user)
+    @extend_schema(summary="Generar un código de acceso", request=AccessCodeSerializer,
+                   responses={201: AccessCodeSerializer})
+    def post(self, request, pet_uuid):
+        pet = get_object_or_404(Pet, uuid=pet_uuid, owner=request.user)
+        expiration_time = request.data.get("expires_at")
+
+        access_code = AccessCode.objects.create(
+            pet=pet, created_by=request.user, expires_at=expiration_time
+        )
         serializer = AccessCodeSerializer(access_code)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AccessCodeValidationView(generics.GenericAPIView):
+    serializer_class = AccessCodeRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(summary="Validar un código de acceso", request=AccessCodeRequestSerializer,
+                   responses={200: {"message": "El código es válido."}})
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        code = serializer.validated_data['code']
+
+        try:
+            access_code = get_object_or_404(AccessCode, code=code, is_used=False)
+            if access_code.expires_at and access_code.expires_at < now():
+                return Response({"error": "El código ha expirado."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": "El código es válido."}, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UseAccessCodeView(generics.GenericAPIView):
+    serializer_class = AccessCodeRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(summary="Utilizar un código de acceso", request=AccessCodeRequestSerializer,
+                   responses={200: PetSerializerWithShared})
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        code = serializer.validated_data['code']
+
+        try:
+            access_code = get_object_or_404(AccessCode, code=code, is_used=False)
+            if access_code.expires_at and access_code.expires_at < now():
+                return Response({"error": "El código ha expirado."}, status=status.HTTP_400_BAD_REQUEST)
+
+            access_code.is_used = True
+            access_code.save()
+
+            pet = access_code.pet
+            pet.shared_with.add(request.user)
+
+            return Response({"message": f"Ahora puedes ver la información de {pet.name}.",
+                             "pet": PetSerializerWithShared(pet).data})
+        except ValidationError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PetSearchView(APIView):
@@ -252,31 +330,12 @@ class SharedPetsView(APIView):
     @extend_schema(
         summary="Listar mascotas compartidas",
         description="Permite a los usuarios ver las mascotas a las que tienen acceso a través de un código de acceso.",
-        responses={200: PetSerializer(many=True)}
+        responses={200: PetSerializerWithShared(many=True)}
     )
     def get(self, request):
         shared_pets = Pet.objects.filter(shared_with=request.user)
-        serializer = PetSerializer(shared_pets, many=True)
+        serializer = PetSerializerWithShared(shared_pets, many=True)
         return Response(serializer.data)
-
-
-class AccessCodeValidationView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    @extend_schema(
-        summary="Validar un código de acceso",
-        request=AccessCodeSerializer,
-        responses={200: {"message": "Acceso concedido"}},
-    )
-    def post(self, request):
-        code = request.data.get('code')
-        try:
-            access_code = AccessCode.validate_code(code)
-            pet = access_code.pet
-            pet.shared_with.add(request.user)
-            return Response({"message": f"Acceso concedido a la mascota {pet.name}"})
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LocationListCreateView(generics.ListCreateAPIView):

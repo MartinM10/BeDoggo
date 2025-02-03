@@ -1,158 +1,128 @@
+import random
+import string
+import time
+
 from django.core.management.base import BaseCommand
-from django.contrib.gis.geos import Point
-from beDoggo.models import User, Pet, Location, Veterinarian, GPSDevice, AccessCode, MedicalRecord
+from django.db import transaction
+from django.utils import timezone
+from faker import Faker
+
+from beDoggo.models import User, GPSDevice, Pet, Location, SexUserChoices, SexPetChoices
+
+
+def generate_device_code():
+    """Genera un código único de 6 caracteres alfanuméricos."""
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
 
 class Command(BaseCommand):
-    help = "Carga datos iniciales en la base de datos"
+    help = "Carga datos ficticios para simular la adopción de la aplicación."
 
-    def handle(self, *args, **kwargs):
-        # Crear usuarios
-        user1, created1 = User.objects.get_or_create(
-            email="user1@example.com",
-            defaults={
-                "username": "user1",
-                "first_name": "John",
-                "last_name": "Doe",
-                "address": "Calle Principal 123",
-                "phone": "123456789",
-                "onboarding_completed": True,
-            }
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--users',
+            type=int,
+            default=200,
+            help='Número de usuarios a crear (default: 200)'
         )
-        if created1:
-            user1.set_password("password123")
-            user1.save()
-
-        user2, created2 = User.objects.get_or_create(
-            email="user2@example.com",
-            defaults={
-                "username": "user2",
-                "first_name": "Jane",
-                "last_name": "Smith",
-                "address": "Avenida Central 456",
-                "phone": "987654321",
-                "onboarding_completed": False,
-            }
+        parser.add_argument(
+            '--pets_per_user',
+            type=int,
+            default=3,
+            help='Número máximo de mascotas por usuario (default: 3)'
         )
-        if created2:
-            user2.set_password("password123")
-            user2.save()
-
-        self.stdout.write(self.style.SUCCESS("Usuarios creados con éxito."))
-
-        # Crear veterinario
-        vet_user, created_vet_user = User.objects.get_or_create(
-            email="vet1@example.com",
-            defaults={"username": "vet1", "first_name": "Dr. Albert", "last_name": "Martínez"}
-        )
-        if created_vet_user:
-            vet_user.set_password("password123")
-            vet_user.save()
-
-        veterinarian, created_vet = Veterinarian.objects.get_or_create(
-            user=vet_user,
-            defaults={
-                "vet_license_number": "VET12345",
-                "clinic_name": "Clínica Veterinaria Los Amigos",
-                "clinic_address": "Avenida Vet 789",
-                "clinic_phone": "555-555-555",
-                "available_hours": "9:00-18:00"
-            }
+        parser.add_argument(
+            '--locations',
+            type=int,
+            default=5,
+            help='Número de localizaciones a generar por dispositivo en caso de mascota perdida (default: 5)'
         )
 
-        self.stdout.write(self.style.SUCCESS("Veterinario creado con éxito."))
+    def handle(self, *args, **options):
+        fake = Faker()
+        total_users = options['users']
+        max_pets = options['pets_per_user']
+        locations_per_device = options['locations']
 
-        # Crear dispositivos GPS
-        gps_device1, created_gps1 = GPSDevice.objects.get_or_create(
-            code="ABC123",
-            defaults={"is_active": True}
-        )
+        self.stdout.write(self.style.MIGRATE_HEADING("Iniciando carga de datos ficticios..."))
+        start_time = time.time()
 
-        gps_device2, created_gps2 = GPSDevice.objects.get_or_create(
-            code="XYZ789",
-            defaults={"is_active": False}
-        )
+        created_users = 0
 
-        self.stdout.write(self.style.SUCCESS("Dispositivos GPS creados con éxito."))
+        # Usamos transacción para mayor rendimiento y consistencia
+        with transaction.atomic():
+            for i in range(1, total_users + 1):
+                # Crear usuario
+                email = fake.unique.email()
+                user = User.objects.create(
+                    email=email,
+                    first_name=fake.first_name(),
+                    last_name=fake.last_name(),
+                    profile_picture=fake.image_url(),
+                    email_verified=fake.boolean(25),
+                    address=fake.address(),
+                    prefix_phone=fake.country_calling_code(),
+                    phone=fake.phone_number()[:20],
+                    sex=random.choice([choice[0] for choice in SexUserChoices.choices]),
+                    acquisition_channel=random.choice([choice[0] for choice in User.AcquisitionChannelChoices.choices]),
+                    birth_date=fake.date_of_birth(minimum_age=18, maximum_age=80),
+                    onboarding_completed=random.choice([True, False])
+                )
+                created_users += 1
 
-        # Crear mascotas
-        pet1, created_pet1 = Pet.objects.get_or_create(
-            name="Bobby",
-            defaults={
-                "breed": "Golden Retriever",
-                "age": 3,
-                "observations": "Es muy amigable.",
-                "is_lost": True,
-                "owner": user1,
-                "gps_device": gps_device1,
-                "veterinarian": veterinarian,
-            }
-        )
-        pet2, created_pet2 = Pet.objects.get_or_create(
-            name="Misty",
-            defaults={
-                "breed": "Persian Cat",
-                "age": 2,
-                "observations": "Le gusta dormir.",
-                "is_lost": True,
-                "owner": user2,
-                "gps_device": gps_device2,
-            }
-        )
+                # Para cada usuario, creamos entre 1 y max_pets mascotas
+                num_pets = random.randint(1, max_pets)
+                for _ in range(num_pets):
+                    pet_name = fake.first_name()  # Para simplificar, usamos un nombre corto
+                    pet = Pet.objects.create(
+                        name=pet_name,
+                        sex=random.choice([choice[0] for choice in SexPetChoices.choices]),
+                        breed=fake.word().capitalize(),
+                        color=fake.color_name(),
+                        age=random.randint(1, 15),
+                        weight=round(random.uniform(1.0, 50.0), 2),
+                        chip_number=fake.unique.bothify(text='??##??##'),
+                        observations=fake.text(max_nb_chars=200),
+                        sterilized=random.choice([True, False]),
+                        is_lost=False,  # Se actualizará a True en algunos casos
+                        phone_emergency=fake.phone_number()[:20],
+                        owner=user,
+                        image=fake.image_url(),
+                    )
 
-        if created_pet1 and created_pet2:
-            self.stdout.write(self.style.SUCCESS("Mascotas creadas con éxito."))
-        else:
-            self.stdout.write(self.style.WARNING("Algunas mascotas ya existían."))
+                    # En un 20% de las ocasiones, marcar la mascota como perdida
+                    if random.random() < 0.2:
+                        pet.is_lost = True
+                        pet.save()
 
-        # Crear ubicaciones de mascotas
-        location1, created_loc1 = Location.objects.get_or_create(
-            location=Point(-4.435477, 36.709157), gps_device=gps_device1
-        )
-        location2, created_loc2 = Location.objects.get_or_create(
-            location=Point(-4.433629, 36.709964), gps_device=gps_device2
-        )
+                        # Crear o asignar un dispositivo GPS
+                        gps_device = GPSDevice.objects.create(
+                            code=generate_device_code(),
+                            is_active=True,
+                            activated_at=timezone.now(),
+                        )
+                        pet.gps_device = gps_device
+                        pet.save()
 
-        if created_loc1 or created_loc2:
-            self.stdout.write(self.style.SUCCESS("Ubicaciones creadas con éxito."))
-        else:
-            self.stdout.write(self.style.WARNING("Algunas ubicaciones ya existían."))
+                        # Generar algunas localizaciones para el dispositivo
+                        for _ in range(locations_per_device):
+                            # Generamos coordenadas aleatorias (puedes ajustar el rango según tu región)
+                            latitude = fake.latitude()
+                            longitude = fake.longitude()
+                            Location.objects.create(
+                                gps_device=gps_device,
+                                location=f"SRID=4326;POINT({longitude} {latitude})",
+                                timestamp=timezone.now()
+                            )
 
-        # Generar código de acceso para compartir una mascota
-        access_code1, created_access1 = AccessCode.objects.get_or_create(
-            pet=pet1,
-            created_by=user1
-        )
+                # Progreso: imprimir cada 5% completado
+                if i % max(1, total_users // 20) == 0 or i == total_users:
+                    percentage = (i / total_users) * 100
+                    elapsed = time.time() - start_time
+                    self.stdout.write(
+                        f"Progreso: {i}/{total_users} usuarios ({percentage:.0f}%) - Tiempo transcurrido: {elapsed:.1f} s")
 
-        self.stdout.write(self.style.SUCCESS(f"Código de acceso generado: {access_code1.code[:8]}..."))
-
-        # Crear historial médico para la mascota "Bobby"
-        medical_record1, created_med1 = MedicalRecord.objects.get_or_create(
-            pet=pet1,
-            veterinarian=veterinarian,
-            visit_reason="Vacunación anual",
-            diagnosis="Salud en buen estado",
-            treatment="Vacuna contra la rabia",
-            medication="Ninguna",
-            vaccines="Rabia, Moquillo",
-            observations="No presentó reacciones adversas",
-            next_visit="2025-06-10"
-        )
-
-        medical_record2, created_med2 = MedicalRecord.objects.get_or_create(
-            pet=pet1,
-            veterinarian=veterinarian,
-            visit_reason="Revisión general",
-            diagnosis="Ligera inflamación en la pata",
-            treatment="Antiinflamatorio",
-            medication="Meloxicam",
-            observations="Debe descansar y evitar actividad intensa",
-            next_visit="2025-07-05"
-        )
-
-        if created_med1 or created_med2:
-            self.stdout.write(self.style.SUCCESS("Historial médico creado con éxito."))
-        else:
-            self.stdout.write(self.style.WARNING("El historial médico ya existía."))
-
-        self.stdout.write(self.style.SUCCESS("Datos iniciales cargados correctamente."))
+        total_time = time.time() - start_time
+        self.stdout.write(
+            self.style.SUCCESS(f"Datos cargados exitosamente. Total de usuarios creados: {created_users}."))
+        self.stdout.write(self.style.SUCCESS(f"Tiempo total de ejecución: {total_time:.1f} s"))
