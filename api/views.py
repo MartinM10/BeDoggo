@@ -157,6 +157,21 @@ class OnboardingView(APIView):
             # Extraemos los datos validados de la mascota
             pet_data = serializer.validated_data
 
+            # Gestionamos los campos específicos del usuario
+            username = pet_data.get("username")
+            first_name = pet_data.get("first_name")
+            accept_newsletter = pet_data.get("accept_newsletter")
+
+            if username:
+                user.username = username  # Actualizamos el username del usuario
+            if first_name:
+                user.first_name = first_name  # Actualizamos el nombre del usuario
+            if accept_newsletter is not None:  # En caso de que se haya proporcionado
+                user.accept_newsletter = accept_newsletter  # Actualizamos el campo accept_newsletter del usuario
+
+            # Guardamos los cambios del usuario
+            user.save()
+
             # Asignamos al 'owner' directamente el usuario autenticado
             pet_data['owner'] = user
 
