@@ -183,8 +183,8 @@ class OnboardingView(APIView):
                 try:
                     gps_device = GPSDevice.objects.get(code=gps_device_code)
                     pet_data['gps_device'] = gps_device  # Asignamos el GPSDevice a los datos de la mascota
-                except GPSDevice.DoesNotExist:
-                    return Response({"error": "El código de dispositivo GPS no existe."},
+                except Exception as e:
+                    return Response({"error": "El código de dispositivo GPS no existe. " + str(e)},
                                     status=status.HTTP_400_BAD_REQUEST)
 
             # Ahora creamos la mascota, pasando solo los campos válidos que existen en el modelo Pet
@@ -406,8 +406,8 @@ class LocationListCreateView(generics.ListCreateAPIView):
 
         try:
             gps_device = GPSDevice.objects.get(code=gps_code)
-        except GPSDevice.DoesNotExist:
-            return Response({"error": "El dispositivo GPS no existe."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": "El dispositivo GPS no existe. " + str(e)}, status=status.HTTP_404_NOT_FOUND)
 
         if not hasattr(gps_device, 'pet') or gps_device.pet.owner != request.user:
             return Response({"error": "El dispositivo GPS no está asociado a una mascota tuya. "
@@ -661,8 +661,8 @@ class AssociateGPSDeviceView(APIView):
         # Obtenemos la mascota a través del pet_id y validamos que el usuario sea el dueño
         try:
             pet = Pet.objects.get(uuid=pet_id, owner=request.user)
-        except Pet.DoesNotExist:
-            return Response({"detail": "Pet not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"detail": "Pet not found. " + str(e)}, status=status.HTTP_404_NOT_FOUND)
 
         # Obtenemos el device_id de la petición
         gps_device_code = request.data.get('gps_device_code')
@@ -670,8 +670,8 @@ class AssociateGPSDeviceView(APIView):
         # Validamos si el dispositivo GPS existe
         try:
             device = GPSDevice.objects.get(code=gps_device_code)
-        except GPSDevice.DoesNotExist:
-            return Response({"detail": "GPS Device not found."}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"detail": "GPS Device not found. " + str(e)}, status=status.HTTP_404_NOT_FOUND)
 
         # Asociamos el dispositivo GPS a la mascota
         pet.gps_device = device
