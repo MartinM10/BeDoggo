@@ -159,8 +159,8 @@ class OnboardingView(APIView):
             user.last_name = serializer.validated_data.get('owner', {}).get('last_name', user.last_name)
             user.birth_date = serializer.validated_data.get('owner', {}).get('birth_date', user.birth_date)
             user.sex = serializer.validated_data.get('owner', {}).get('sex', user.sex)
-            user.accepts_newsletter = serializer.validated_data.get('owner', {}).get('accepts_newsletter',
-                                                                                     user.accepts_newsletter)
+            user.accept_newsletter = serializer.validated_data.get('owner', {}).get('accept_newsletter',
+                                                                                    user.accept_newsletter)
             user.save()
 
             pet_data = serializer.validated_data

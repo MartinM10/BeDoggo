@@ -90,7 +90,7 @@ class OnboardingPetSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(source='owner.last_name', required=False)
     birth_date = serializers.DateField(source='owner.birth_date', required=False)
     sex = serializers.ChoiceField(source='owner.sex', choices=SexUserChoices.choices, required=False)
-    accept_newsletter = serializers.BooleanField(source='owner.accepts_newsletter', required=False)
+    accept_newsletter = serializers.BooleanField(source='owner.accept_newsletter', required=False)
 
     class Meta:
         model = Pet
