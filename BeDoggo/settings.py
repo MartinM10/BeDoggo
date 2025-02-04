@@ -79,7 +79,7 @@ SPECTACULAR_SETTINGS = {
 
 # Configuración de Simple JWT (con Simple JWT los tokens no se almacenan en la bbdd)
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=30),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
