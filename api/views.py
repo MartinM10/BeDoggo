@@ -154,23 +154,43 @@ class OnboardingView(APIView):
         serializer = OnboardingPetSerializer(data=request.data)
 
         if serializer.is_valid():
-            user.username = serializer.validated_data.get('owner', {}).get('username', user.username)
-            user.first_name = serializer.validated_data.get('owner', {}).get('first_name', user.first_name)
-            user.last_name = serializer.validated_data.get('owner', {}).get('last_name', user.last_name)
-            user.birth_date = serializer.validated_data.get('owner', {}).get('birth_date', user.birth_date)
-            user.sex = serializer.validated_data.get('owner', {}).get('sex', user.sex)
-            user.accept_newsletter = serializer.validated_data.get('owner', {}).get('accept_newsletter',
-                                                                                    user.accept_newsletter)
-            user.save()
-
+            # Extraemos los datos validados de la mascota
             pet_data = serializer.validated_data
+
+            # Asignamos al 'owner' directamente el usuario autenticado
+            pet_data['owner'] = user
+
+            # Gestionamos el GPSDevice
             gps_device_code = pet_data.get("gps_device_code")
 
             if gps_device_code:
-                gps_device, created = GPSDevice.objects.get_or_create(code=gps_device_code)
-                pet_data['gps_device'] = gps_device
+                # Verificamos si el GPSDevice existe
+                try:
+                    gps_device = GPSDevice.objects.get(code=gps_device_code)
+                    pet_data['gps_device'] = gps_device  # Asignamos el GPSDevice a los datos de la mascota
+                except GPSDevice.DoesNotExist:
+                    return Response({"error": "El código de dispositivo GPS no existe."},
+                                    status=status.HTTP_400_BAD_REQUEST)
 
-            pet = Pet.objects.create(owner=user, **pet_data)
+            # Ahora creamos la mascota, pasando solo los campos válidos que existen en el modelo Pet
+            pet = Pet.objects.create(
+                name=pet_data['name'],
+                sex=pet_data.get('sex'),
+                breed=pet_data.get('breed'),
+                color=pet_data.get('color'),
+                birth_date=pet_data.get('birth_date'),
+                weight=pet_data.get('weight'),
+                chip_number=pet_data.get('chip_number'),
+                chip_position=pet_data.get('chip_position'),
+                observations=pet_data.get('observations'),
+                sterilized=pet_data.get('sterilized', False),
+                is_lost=pet_data.get('is_lost', False),
+                phone_emergency=pet_data.get('phone_emergency'),
+                image=pet_data.get('image'),
+                owner=user,  # Se asegura de que el propietario es el usuario autenticado
+                gps_device=pet_data.get('gps_device'),  # Aquí asignamos el GPSDevice si existe
+            )
+
             return Response(PetSerializer(pet).data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
