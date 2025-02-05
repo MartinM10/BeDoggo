@@ -5,7 +5,7 @@ from django.utils.timezone import now
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token
 from rest_framework import generics, status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.generics import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -233,31 +233,50 @@ class PetDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
     lookup_field = 'uuid'
 
-    @extend_schema(summary="Detalles de una mascota")
     def get_queryset(self):
-        # Permitir acceso a dueños y usuarios compartidos
+        user = self.request.user  # Usuario autenticado
+
         return Pet.objects.filter(
-            Q(owner=self.request.user) |
-            Q(shared_with=self.request.user) |
-            Q(veterinarian=self.request)
+            Q(owner=user) |
+            Q(shared_with=user) |
+            Q(veterinarian__user=user)  # Permitir acceso si el usuario es el veterinario
         ).distinct()
 
+    def get_object(self):
+        """Obtiene la mascota si el usuario tiene permisos para verla."""
+        pet_uuid = self.kwargs.get("uuid")
+        user = self.request.user
+
+        pet = get_object_or_404(Pet, uuid=pet_uuid)
+
+        # Verificar si el usuario tiene permiso para acceder
+        if pet.owner == user or user in pet.shared_with.all() or (pet.veterinarian and pet.veterinarian.user == user):
+            return pet
+
+        # Si el usuario no tiene permisos
+        raise PermissionDenied("No tienes permiso para ver esta mascota.")
+
     def update(self, request, *args, **kwargs):
-        # Restringir edición solo al dueño
-        if self.get_object().owner != request.user:
-            return Response(
-                {"detail": "No tienes permiso para editar esta mascota."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        """Permite edición solo si el usuario es el dueño o el veterinario de la mascota."""
+        pet = self.get_object()
+        if isinstance(pet, Response):  # Si get_object devuelve un error, reenvía la respuesta
+            return pet
+
+        # Permitir edición solo al dueño o al veterinario
+        if pet.owner != request.user and (not pet.veterinarian or pet.veterinarian.user != request.user):
+            raise PermissionDenied("No tienes permiso para editar esta mascota.")
+
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
-        # Restringir eliminación solo al dueño
-        if self.get_object().owner != request.user:
-            return Response(
-                {"detail": "No tienes permiso para eliminar esta mascota."},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        """Restringe eliminación solo al dueño."""
+        pet = self.get_object()
+        if isinstance(pet, Response):  # Si get_object devuelve un error, reenvía la respuesta
+            return pet
+
+        if pet.owner != request.user:
+            raise PermissionDenied("No tienes permiso para eliminar esta mascota.")
+
         return super().destroy(request, *args, **kwargs)
 
 
@@ -276,6 +295,28 @@ class PetAccessCodeView(generics.CreateAPIView):
         )
         serializer = AccessCodeSerializer(access_code)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class PetLocationView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = LocationSerializer
+
+    @extend_schema(
+        summary="Obtener localizaciones de una mascota",
+        description="Obtiene todas las localizaciones de la mascota, siempre que el usuario sea su dueño o "
+                    "tenga acceso compartido.",
+        responses={200: LocationSerializer(many=True),
+                   403: {"error": "No tienes permiso para ver las localizaciones."}},
+    )
+    def get_queryset(self):
+        pet_uuid = self.kwargs.get("uuid")
+        user = self.request.user
+        pet = get_object_or_404(Pet, uuid=pet_uuid)
+
+        if pet.owner == user or user in pet.shared_with.all():
+            return Location.objects.filter(gps_device=pet.gps_device).order_by("-timestamp")
+
+        return Location.objects.none()
 
 
 class AccessCodeValidationView(generics.GenericAPIView):
@@ -382,7 +423,8 @@ class LocationListCreateView(generics.ListCreateAPIView):
 
     @extend_schema(
         summary="Listar y registrar ubicaciones",
-        description="Permite a los usuarios obtener la lista de ubicaciones de sus mascotas o registrar una nueva ubicación con latitud, longitud y código del GPS.",
+        description="Permite a los usuarios obtener la lista de ubicaciones de sus mascotas o registrar una nueva "
+                    "ubicación con latitud, longitud y código del GPS.",
         parameters=[
             OpenApiParameter(name="latitude", description="Latitud de la ubicación", required=True, type=float),
             OpenApiParameter(name="longitude", description="Longitud de la ubicación", required=True, type=float),
@@ -408,12 +450,11 @@ class LocationListCreateView(generics.ListCreateAPIView):
         try:
             gps_device = GPSDevice.objects.get(code=gps_code)
         except Exception as e:
-            return Response({"error": "El dispositivo GPS no existe. " + str(e)}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "El dispositivo GPS no existe. " + str(e)},
+                            status=status.HTTP_404_NOT_FOUND)
 
         if not hasattr(gps_device, 'pet') or gps_device.pet.owner != request.user:
-            return Response({"error": "El dispositivo GPS no está asociado a una mascota tuya. "
-                                      "No tienes permiso para usar este dispositivo GPS."},
-                            status=status.HTTP_403_FORBIDDEN)
+            raise PermissionDenied("No tienes permiso para usar este dispositivo GPS.")
 
         if not gps_device.is_active:
             return Response({"error": "El dispositivo GPS no está activado."}, status=status.HTTP_400_BAD_REQUEST)
@@ -553,7 +594,7 @@ class MedicalRecordListCreateView(APIView):
     def get(self, request, pet_id):
         pet = Pet.objects.get(uuid=pet_id)
         if pet.owner != request.user and not pet.shared_with.filter(id=request.user.id).exists():
-            return Response({"error": "No tienes permiso para ver este historial."}, status=status.HTTP_403_FORBIDDEN)
+            raise PermissionDenied("No tienes permiso para ver este historial.")
         medical_records = MedicalRecord.objects.filter(pet=pet)
         serializer = MedicalRecordSerializer(medical_records, many=True)
         return Response(serializer.data)

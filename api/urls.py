@@ -6,7 +6,8 @@ from .views import (
     PetListCreateView, PetDetailView, PetAccessCodeView, AccessCodeValidationView,
     LostPetsNearbyView, LocationListCreateView, VeterinarianListCreateView, VeterinarianDetailView,
     MedicalRecordListCreateView, MedicalRecordDetailView, PetSearchView, SharedPetsView, OnboardingView,
-    GPSDeviceListCreateView, GPSDeviceDetailView, AssociateGPSDeviceView, UserProfileView, UseAccessCodeView
+    GPSDeviceListCreateView, GPSDeviceDetailView, AssociateGPSDeviceView, UserProfileView, UseAccessCodeView,
+    PetLocationView
 )
 
 urlpatterns = [
@@ -32,7 +33,7 @@ urlpatterns = [
     path('pets/shared/', SharedPetsView.as_view(), name='shared-pets'),
     path('pets/<uuid:pet_id>/associate-device/', AssociateGPSDeviceView.as_view(), name='associate-device'),
     path('pets/access-code/use/', UseAccessCodeView.as_view(), name='use-access-code'),
-
+    path("pets/<uuid:uuid>/locations/", PetLocationView.as_view(), name="pet-locations"),
     # Dispositivos GPS
     path('gps-devices/', GPSDeviceListCreateView.as_view(), name='gps-device-list-create'),
     path('gps-devices/<str:code>/', GPSDeviceDetailView.as_view(), name='gps-device-detail'),
