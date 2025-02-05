@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from drf_spectacular.utils import extend_schema_field
-from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veterinarian, GPSDevice, SexUserChoices
+from beDoggo.models import User, Pet, AccessCode, Location, MedicalRecord, Veterinarian, GPSDevice, SexUserChoices, \
+    SexPetChoices
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -85,20 +86,27 @@ class PetSerializer(serializers.ModelSerializer):
 
 class OnboardingPetSerializer(serializers.ModelSerializer):
     gps_device_code = serializers.CharField(required=False, write_only=True)
+
+    # Datos del usuario
     username = serializers.CharField(source='owner.username', required=False)
     first_name = serializers.CharField(source='owner.first_name', required=False)
     last_name = serializers.CharField(source='owner.last_name', required=False)
-    birth_date = serializers.DateField(source='owner.birth_date', required=False)
-    sex = serializers.ChoiceField(source='owner.sex', choices=SexUserChoices.choices, required=False)
     accept_newsletter = serializers.BooleanField(source='owner.accept_newsletter', required=False)
+    birth_date_user = serializers.DateField(source='owner.birth_date', required=False)
+    sex_user = serializers.ChoiceField(source='owner.sex', choices=SexUserChoices.choices, required=False)
+
+    # Datos de la mascota, con `_pet` para diferenciarlos
+    sex_pet = serializers.ChoiceField(choices=SexPetChoices.choices, required=False)
+    birth_date_pet = serializers.DateField(required=False)
+    phone_emergency = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Pet
         fields = [
-            'gps_device_code', 'name', 'sex', 'breed', 'color', 'birth_date', 'weight',
+            'gps_device_code', 'name', 'sex_pet', 'breed', 'color', 'birth_date_pet', 'weight',
             'chip_number', 'chip_position', 'observations', 'sterilized', 'is_lost',
             'phone_emergency', 'image', 'shared_with',
-            'username', 'first_name', 'last_name', 'birth_date', 'sex', 'accept_newsletter'
+            'username', 'sex_user', 'first_name', 'last_name', 'accept_newsletter', 'birth_date_user'
         ]
 
 

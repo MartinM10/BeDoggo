@@ -190,12 +190,13 @@ class OnboardingView(APIView):
             # Ahora creamos la mascota, pasando solo los campos válidos que existen en el modelo Pet
             pet = Pet.objects.create(
                 name=pet_data['name'],
-                sex=pet_data.get('sex'),
+                sex=pet_data.get('sex_pet'),  # 🔹 Corrección: ahora usa sex_pet
                 breed=pet_data.get('breed'),
                 color=pet_data.get('color'),
-                birth_date=pet_data.get('birth_date'),
+                birth_date=pet_data.get('birth_date_pet'),  # 🔹 Corrección: usa birth_date_pet
                 weight=pet_data.get('weight'),
                 chip_number=pet_data.get('chip_number'),
+                passport=pet_data.get('passport'),
                 chip_position=pet_data.get('chip_position'),
                 observations=pet_data.get('observations'),
                 sterilized=pet_data.get('sterilized', False),

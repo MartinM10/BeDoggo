@@ -118,6 +118,7 @@ class Pet(models.Model):
     sterilized = models.BooleanField(default=False)
     is_lost = models.BooleanField(default=False)
     phone_emergency = models.CharField(max_length=20, blank=True, null=True)
+    passport = models.CharField(max_length=50, unique=True, null=True, blank=True)
 
     # Relaciones
     owner = models.ForeignKey(User, related_name='owned_pets', on_delete=models.CASCADE)
