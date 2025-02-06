@@ -110,11 +110,13 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
+"""
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8081",  # Permite las peticiones desde React Native
     "http://127.0.0.1:8081",
 ]
+"""
+CORS_ALLOW_ALL_ORIGINS = True # solo para pruebas, DESABHILITAR EN PRODUCCION
 
 CORS_ALLOW_CREDENTIALS = True  # Permite enviar cookies (si usas autenticación con sesión)
 
