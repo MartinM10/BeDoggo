@@ -207,16 +207,19 @@ def lost_pets_data_view(request):
     # Filtrar mascotas perdidas dentro de la distancia especificada
     lost_pets = Pet.objects.filter(
         is_lost=True,
-        locations__location__distance_lte=(user_location, D(km=distance))
-    ).annotate(distance=Distance('locations__location', user_location)).select_related('owner')
+        gps_device__isnull=False,  # Solo mascotas con GPS
+        gps_device__locations__location__distance_lte=(user_location, D(km=distance))
+    ).annotate(
+        distance=Distance('gps_device__locations__location', user_location)
+    ).select_related('owner', 'gps_device').prefetch_related('gps_device__locations').order_by('distance')
 
     locations = [
         {
             'name': pet.name,
             'breed': pet.breed,
             'birth_date': pet.birth_date,
-            'latitude': pet.locations.first().location.y,
-            'longitude': pet.locations.first().location.x,
+            'latitude': pet.gps_device.locations.last().location.y,
+            'longitude': pet.gps_device.locations.last().location.x,
             'owner_name': f"{pet.owner.first_name} {pet.owner.last_name}",
             'owner_phone': pet.owner.phone if pet.owner.phone else "N/A",
             'owner_email': pet.owner.email if pet.owner.email else "N/A",

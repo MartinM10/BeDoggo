@@ -28,7 +28,7 @@ class User(AbstractUser):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     username = models.CharField(max_length=100, blank=True, null=True)
     profile_picture = models.URLField(null=True, blank=True)
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True, db_index=True)
     email_verified = models.BooleanField(default=False)
     address = models.TextField(blank=True, null=True)
     prefix_phone = models.CharField(max_length=20, blank=True, null=True)
@@ -85,7 +85,7 @@ def generate_device_code():
 
 
 class GPSDevice(models.Model):
-    code = models.CharField(max_length=10, unique=True, blank=False, null=False)  # 🔹 Ahora es obligatorio
+    code = models.CharField(max_length=10, unique=True, db_index=True, blank=False, null=False)
     is_active = models.BooleanField(default=False)
     activated_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -140,7 +140,7 @@ class MedicalRecord(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     pet = models.ForeignKey(Pet, related_name="medical_records", on_delete=models.CASCADE)
     veterinarian = models.ForeignKey(Veterinarian, on_delete=models.CASCADE, related_name="medical_records")
-    date = models.DateTimeField(auto_now_add=now)
+    date = models.DateTimeField(auto_now_add=True)
     visit_reason = models.CharField(max_length=200)
     diagnosis = models.TextField(blank=True, null=True)
     treatment = models.TextField(blank=True, null=True)
@@ -169,13 +169,13 @@ class Location(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Location from device {self.gps_device.uuid} at {self.timestamp}"
+        return f"Location from device {self.gps_device.code if self.gps_device else 'Unknown'} at {self.timestamp}"
 
 
 # Modelo de códigos de acceso
 class AccessCode(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    code = models.CharField(max_length=64, unique=True)
+    code = models.CharField(max_length=64, db_index=True, unique=True)
     pet = models.ForeignKey(Pet, on_delete=models.CASCADE, related_name='access_codes')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='generated_codes')
     is_used = models.BooleanField(default=False)
@@ -186,7 +186,7 @@ class AccessCode(models.Model):
     def save(self, *args, **kwargs):
         if not self.code:
             unique_data = f"{self.pet.uuid}{self.created_by.uuid}{uuid.uuid4()}"
-            self.code = hashlib.sha256(unique_data.encode()).hexdigest()
+            self.code = hashlib.sha256(unique_data.encode()).hexdigest()[:12]
         # Establecer expiración por defecto a 1 semana
         if not self.expires_at:
             self.expires_at = now() + timedelta(days=7)
