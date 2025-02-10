@@ -7,7 +7,7 @@ from .views import (
     LostPetsNearbyView, LocationListCreateView, VeterinarianListCreateView, VeterinarianDetailView,
     MedicalRecordListCreateView, MedicalRecordDetailView, PetSearchView, SharedPetsView, OnboardingView,
     GPSDeviceListCreateView, GPSDeviceDetailView, AssociateGPSDeviceView, UserProfileView, UseAccessCodeView,
-    PetLocationView
+    PetLocationView, CustomTokenObtainPairView, CustomTokenRefreshView
 )
 
 urlpatterns = [
@@ -53,7 +53,7 @@ urlpatterns = [
     path('medical-records/<uuid:pet_id>/', MedicalRecordListCreateView.as_view(), name='medical-record-list-create'),
     path('medical-records/<uuid:record_id>/', MedicalRecordDetailView.as_view(), name='medical-record-detail'),
 
-    # JWT Tokens
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # JWT Tokens (actualizado con las vistas personalizadas)
+    path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/refresh/', CustomTokenRefreshView.as_view(), name='token_refresh'),
 ]
