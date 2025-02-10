@@ -27,13 +27,15 @@ urlpatterns = [
     # Mascotas
     path('pets/', PetListCreateView.as_view(), name='pet-list-create'),
     path('pets/<uuid:uuid>/', PetDetailView.as_view(), name='pet-detail'),
+    path('pets/<uuid:uuid>/locations/all/', PetLocationView.as_view(), name='pet-locations-all'),
+    path('pets/<uuid:uuid>/locations/from/<str:from_datetime>/', PetLocationView.as_view(), name='pet-locations-from'),
     path('pets/<uuid:pet_uuid>/access-code/', PetAccessCodeView.as_view(), name='pet-access-code'),
     path('pets/access-code/validate/', AccessCodeValidationView.as_view(), name='access-code-validate'),
     path('pets/search/', PetSearchView.as_view(), name='pet-search'),
     path('pets/shared/', SharedPetsView.as_view(), name='shared-pets'),
     path('pets/<uuid:pet_id>/associate-device/', AssociateGPSDeviceView.as_view(), name='associate-device'),
     path('pets/access-code/use/', UseAccessCodeView.as_view(), name='use-access-code'),
-    path("pets/<uuid:uuid>/locations/", PetLocationView.as_view(), name="pet-locations"),
+
     # Dispositivos GPS
     path('gps-devices/', GPSDeviceListCreateView.as_view(), name='gps-device-list-create'),
     path('gps-devices/<str:code>/', GPSDeviceDetailView.as_view(), name='gps-device-detail'),

@@ -1,7 +1,7 @@
 import jwt
 from django.db.models import Q
 from django.shortcuts import redirect
-from django.utils.timezone import now
+from django.utils.timezone import now, make_aware
 from google.auth.transport.requests import Request as GoogleRequest
 from google.oauth2 import id_token
 from rest_framework import generics, status
@@ -21,6 +21,8 @@ from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D  # Distancia
 from django.contrib.gis.db.models.functions import Distance
 from drf_spectacular.utils import extend_schema, OpenApiParameter
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 
 def api_home(request):
@@ -303,20 +305,63 @@ class PetLocationView(generics.ListAPIView):
 
     @extend_schema(
         summary="Obtener localizaciones de una mascota",
-        description="Obtiene todas las localizaciones de la mascota, siempre que el usuario sea su dueño o "
-                    "tenga acceso compartido.",
-        responses={200: LocationSerializer(many=True),
-                   403: {"error": "No tienes permiso para ver las localizaciones."}},
+        description="""
+        Obtiene las localizaciones de una mascota. Se pueden obtener todas las localizaciones o filtrar desde una fecha específica.
+        
+        Ejemplos de uso:
+        - Todas las localizaciones: `/api/pets/123e4567-e89b-12d3-a456-426614174000/locations/all/`
+        - Desde una fecha: `/api/pets/123e4567-e89b-12d3-a456-426614174000/locations/from/2024-03-20_19:30/`
+        
+        """,
+        parameters=[
+            OpenApiParameter(
+                name="uuid",
+                location=OpenApiParameter.PATH,
+                description="UUID de la mascota",
+                required=True,
+                type=str
+            ),
+            OpenApiParameter(
+                name="from_datetime",
+                location=OpenApiParameter.QUERY,
+                description="Fecha y hora desde la que filtrar (formato: YYYY-MM-DD_HH:MM)",
+                required=False,
+                type=str,
+                examples=["2024-03-20_19:30"]
+            ),
+        ],
+        responses={
+            200: {LocationSerializer(many=True)},
+            400: {"error": "Formato de fecha inválido. Use YYYY-MM-DD_HH:MM (ejemplo: 2024-03-20_19:30)"},
+            403: {"error": "No tienes permiso para ver las localizaciones de esta mascota."},
+            404: {"error": "No se encontró la mascota especificada."}
+        }
     )
     def get_queryset(self):
         pet_uuid = self.kwargs.get("uuid")
         user = self.request.user
+        from_datetime_str = self.kwargs.get("from_datetime")
+
         pet = get_object_or_404(Pet, uuid=pet_uuid)
 
-        if pet.owner == user or user in pet.shared_with.all():
-            return Location.objects.filter(gps_device=pet.gps_device).order_by("-timestamp")
+        if pet.owner != user and not user in pet.shared_with.all():
+            return Location.objects.none()
 
-        return Location.objects.none()
+        queryset = Location.objects.filter(gps_device=pet.gps_device).order_by("-timestamp")
+
+        if from_datetime_str:
+            try:
+                # Convertimos el string a datetime
+                naive_datetime = datetime.strptime(from_datetime_str, "%Y-%m-%d_%H:%M")
+                # Hacemos el datetime aware de la zona horaria
+                from_datetime = naive_datetime.replace(tzinfo=ZoneInfo("UTC"))
+                queryset = queryset.filter(timestamp__gte=from_datetime)
+            except ValueError:
+                raise ValidationError({
+                    "error": "Formato de fecha inválido. Use YYYY-MM-DD_HH:MM (ejemplo: 2024-03-20_19:30)"
+                })
+
+        return queryset
 
 
 class AccessCodeValidationView(generics.GenericAPIView):
