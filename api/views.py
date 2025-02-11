@@ -251,6 +251,9 @@ class PetListCreateView(generics.ListCreateAPIView):
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
 
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)  # 🔹 Asignar el owner explícitamente
+
 
 class PetDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = PetSerializer

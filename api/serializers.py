@@ -51,23 +51,35 @@ class PetSerializer(serializers.ModelSerializer):
     owner = UserSerializer(read_only=True)
     veterinarian = VeterinarianSerializer(read_only=True)
     gps_device = GPSDeviceSerializer(read_only=True)
-    gps_device_code = serializers.CharField(required=False, write_only=True)
+    gps_device_code = serializers.CharField(required=False, write_only=True, allow_blank=True, allow_null=True)
 
     class Meta:
         model = Pet
         fields = '__all__'
         read_only_fields = ['owner', 'veterinarian']
 
+    def validate(self, data):
+        # Convertir todos los strings vacíos a None
+        for field_name, value in dict(data).items():
+            # Ignorar campos que no son string o son requeridos
+            if isinstance(value, str) and value.strip() == "" and not self.fields[field_name].required:
+                data[field_name] = None
+        return data
+
     def create(self, validated_data):
         gps_device_code = validated_data.pop('gps_device_code', None)
         gps_device = None
 
-        if gps_device_code:
+        if gps_device_code and gps_device_code.strip():
             try:
                 gps_device = GPSDevice.objects.get(code=gps_device_code)
             except GPSDevice.DoesNotExist:
                 raise serializers.ValidationError({"gps_device_code": "El dispositivo GPS no existe."})
 
+        request = self.context.get('request')
+        if request and request.user:
+            validated_data['owner'] = request.user
+        
         pet = Pet.objects.create(**validated_data, gps_device=gps_device)
         return pet
 
