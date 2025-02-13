@@ -69,12 +69,12 @@ class PetForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super(PetForm, self).__init__(*args, **kwargs)
         if self.instance and self.instance.image:
-            self.fields['image'].widget.attrs['data-current-image'] = self.instance.image.url
+            self.fields['image'].widget.attrs['data-current-image'] = self.instance.image
 
     def clean_birth_date(self):
         birth_date = self.cleaned_data.get('birth_date')
-        if birth_date > now:
-            raise forms.ValidationError("Error. Birth date > now.")
+        if birth_date > now().date():
+            raise forms.ValidationError("Error. Birth date cannot be in the future.")
         return birth_date
 
 

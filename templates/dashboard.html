@@ -29,8 +29,8 @@
                         <div class="carousel-item {% if forloop.first %}active{% endif %}">
                             <div class="card mx-auto" style="max-width: 400px;">
                                 <!-- Imagen de la mascota -->
-                                {% if pet.photo %}
-                                    <img src="{{ pet.photo.url }}" class="card-img-top" alt="{{ pet.name }}"
+                                {% if pet.image %}
+                                    <img src="{{ pet.image }}" class="card-img-top" alt="{{ pet.name }}"
                                          style="height: 300px; object-fit: cover;">
                                 {% else %}
                                     <img src="/static/images/default_pet_image.jpg" class="card-img-top"
