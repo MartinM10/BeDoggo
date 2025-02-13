@@ -50,10 +50,10 @@
 
                                 <!-- Botones de acciones -->
                                 <div class="card-footer">
-                                    <a href="{% url 'edit-pet' pet.id %}" class="btn btn-warning btn-sm">
+                                    <a href="{% url 'edit-pet' pet.uuid %}" class="btn btn-warning btn-sm">
                                         <i class="fas fa-edit"></i> Editar
                                     </a>
-                                    <form action="{% url 'delete-pet' pet.id %}" method="post" style="display:inline;">
+                                    <form action="{% url 'delete-pet' pet.uuid %}" method="post" style="display:inline;">
                                         {% csrf_token %}
                                         <button type="submit" class="btn btn-danger btn-sm">
                                             <i class="fas fa-trash-alt"></i> Eliminar
